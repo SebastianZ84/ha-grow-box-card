@@ -501,7 +501,7 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             { x: 40, y: 440 }, // Plant 3 (Bottom Left)
             { x: 210, y: 440 } // Plant 4 (Bottom Right)
         ];
-        const plantElements = positions.map((pos, index) => {
+        return positions.map((pos, index) => {
             var _a, _b;
             const plant = plants[index];
             const color = plantColors[index];
@@ -591,7 +591,6 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         </g>
       `;
         });
-        return x `${plantElements}`;
     }
     render() {
         var _a, _b, _c, _d;
@@ -674,7 +673,18 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             
             <!-- Growbox Schema -->
             <rect x="20" y="265" width="360" height="315" fill="#1a1a1a" stroke="#4CAF50" stroke-width="2" rx="8"/>
-            <text x="200" y="285" font-family="Arial" font-size="14" fill="#4CAF50" text-anchor="middle">Growbox (2x2)</text>
+            
+            <!-- Test Plant (Hard-coded) -->
+            <g id="test-plant">
+              <rect x="40" y="300" width="150" height="130" fill="#2d2d2d" rx="8" stroke="#4CAF50" stroke-width="1"/>
+              <text x="115" y="320" font-family="Arial" font-size="20" text-anchor="middle">🌿</text>
+              <text x="115" y="345" font-family="Arial" font-size="12" fill="#4CAF50" text-anchor="middle">Test Plant</text>
+              <text x="50" y="365" font-family="Arial" font-size="10" fill="#888">💧 23.0%</text>
+              <text x="110" y="365" font-family="Arial" font-size="10" fill="#888">🌡️ 16.7°C</text>
+              <rect x="50" y="380" width="100" height="6" fill="#444" rx="3"/>
+              <rect x="50" y="380" width="30" height="6" fill="#f44336" rx="3"/>
+              <text x="100" y="405" font-family="Arial" font-size="9" fill="#f44336" text-anchor="middle">Problem - 30%</text>
+            </g>
             
             ${this.renderPlantGrid()}
           </svg>
