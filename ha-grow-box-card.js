@@ -72,46 +72,7 @@ const t$1=t=>(e,o)=>{void 0!==o?o.addInitializer((()=>{customElements.define(t,e
  * SPDX-License-Identifier: BSD-3-Clause
  */function r$1(r){return n({...r,state:!0,attribute:!1})}
 
-var t,r;!function(e){e.language="language",e.system="system",e.comma_decimal="comma_decimal",e.decimal_comma="decimal_comma",e.space_comma="space_comma",e.none="none";}(t||(t={})),function(e){e.language="language",e.system="system",e.am_pm="12",e.twenty_four="24";}(r||(r={}));var ne=function(e,t,r,n){n=n||{},r=null==r?{}:r;var i=new Event(t,{bubbles:void 0===n.bubbles||n.bubbles,cancelable:Boolean(n.cancelable),composed:void 0===n.composed||n.composed});return i.detail=r,e.dispatchEvent(i),i};function _e(e,t,r){if(t.has("config")||r)return !0;if(e.config.entity){var n=t.get("hass");return !n||n.states[e.config.entity]!==e.hass.states[e.config.entity]}return !1}
-
-class VPDCalculator {
-    static calculateVPD(leafTemp, airTemp, humidity) {
-        // VPD calculation using standard formula
-        const VPleaf = 610.7 * Math.exp(17.27 * leafTemp / (leafTemp + 237.3)) / 1000;
-        const VPair = 610.7 * Math.exp(17.27 * airTemp / (airTemp + 237.3)) / 1000 * humidity / 100;
-        return VPleaf - VPair;
-    }
-    static getVPDPhase(vpd, customPhases) {
-        const phases = customPhases || this.DEFAULT_PHASES;
-        for (const [phaseName, phase] of Object.entries(phases)) {
-            const p = phase;
-            if (vpd >= p.min && vpd < p.max) {
-                return {
-                    vpd,
-                    phase: phaseName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-                    color: p.color
-                };
-            }
-        }
-        return {
-            vpd,
-            phase: 'Unknown',
-            color: '#888888'
-        };
-    }
-    static formatVPD(vpd) {
-        return vpd.toFixed(2) + ' kPa';
-    }
-}
-VPDCalculator.DEFAULT_PHASES = {
-    under_transpiration: { min: 0, max: 0.4, color: '#0066cc' },
-    early_vegetation: { min: 0.4, max: 0.8, color: '#00cc66' },
-    late_vegetation: { min: 0.8, max: 1.2, color: '#66cc00' },
-    mid_late_flowering: { min: 1.2, max: 1.6, color: '#ffcc00' },
-    danger_zone: { min: 1.6, max: Infinity, color: '#cc0000' }
-};
-
-let GrowBoxCard = class GrowBoxCard extends i {
+let HaGrowBoxCard = class HaGrowBoxCard extends i {
     static async getConfigElement() {
         await Promise.resolve().then(function () { return editor; });
         return document.createElement('ha-grow-box-card-editor');
@@ -119,25 +80,17 @@ let GrowBoxCard = class GrowBoxCard extends i {
     static getStubConfig() {
         return {
             type: 'custom:ha-grow-box-card',
-            name: 'Grow Tent',
-            inner_temp_entity: 'sensor.grow_tent_temperature',
-            inner_humidity_entity: 'sensor.grow_tent_humidity',
-            outer_temp_entity: 'sensor.room_temperature',
-            outer_humidity_entity: 'sensor.room_humidity',
-            leaf_temp_entity: 'sensor.leaf_temperature',
-            light_entity: 'light.grow_light',
-            heating_entity: 'switch.grow_tent_heater',
-            ventilation_entity: 'fan.grow_tent_exhaust',
-            camera_entity: 'camera.grow_tent_cam',
-            vents: [
-                { name: 'Top Vent', entity: 'cover.top_vent', position: 'top' },
-                { name: 'Side Vent', entity: 'cover.side_vent', position: 'side' }
-            ],
+            name: 'Grow Box',
+            vpd: {
+                enabled: true,
+                show_phases: true
+            },
             plants: [
-                { name: 'Plant 1', entity: 'plant.cannabis_1', position: 1 },
-                { name: 'Plant 2', entity: 'plant.cannabis_2', position: 2 }
-            ],
-            vpd_calculation: { enabled: true }
+                { name: 'Plant 1', position: 1 },
+                { name: 'Plant 2', position: 2 },
+                { name: 'Plant 3', position: 3 },
+                { name: 'Plant 4', position: 4 }
+            ]
         };
     }
     setConfig(config) {
@@ -146,274 +99,82 @@ let GrowBoxCard = class GrowBoxCard extends i {
         }
         this.config = config;
     }
-    shouldUpdate(changedProps) {
-        if (!this.config) {
-            return false;
+    getCardSize() {
+        return 8;
+    }
+    calculateVPD() {
+        if (!this.config.inner_temp_entity || !this.config.inner_humidity_entity || !this.config.leaf_temp_entity) {
+            return { vpd: 0, phase: 'Unknown', color: '#666' };
         }
-        return _e(this, changedProps, false);
-    }
-    willUpdate(changedProps) {
-        var _a;
-        if (!this.hass || !this.config)
-            return;
-        // Calculate VPD if enabled and entities are available
-        if (((_a = this.config.vpd_calculation) === null || _a === void 0 ? void 0 : _a.enabled) !== false) {
-            this.updateVPD();
+        const tempState = this.hass.states[this.config.inner_temp_entity];
+        const humidityState = this.hass.states[this.config.inner_humidity_entity];
+        const leafTempState = this.hass.states[this.config.leaf_temp_entity];
+        if (!tempState || !humidityState || !leafTempState) {
+            return { vpd: 0, phase: 'Unknown', color: '#666' };
         }
-    }
-    updateVPD() {
-        var _a, _b, _c, _d;
-        const leafTempEntity = this.config.leaf_temp_entity;
-        const innerTempEntity = this.config.inner_temp_entity;
-        const innerHumidityEntity = this.config.inner_humidity_entity;
-        if (!leafTempEntity || !innerTempEntity || !innerHumidityEntity)
-            return;
-        const leafTemp = parseFloat((_a = this.hass.states[leafTempEntity]) === null || _a === void 0 ? void 0 : _a.state);
-        const airTemp = parseFloat((_b = this.hass.states[innerTempEntity]) === null || _b === void 0 ? void 0 : _b.state);
-        const humidity = parseFloat((_c = this.hass.states[innerHumidityEntity]) === null || _c === void 0 ? void 0 : _c.state);
-        if (isNaN(leafTemp) || isNaN(airTemp) || isNaN(humidity))
-            return;
-        const vpd = VPDCalculator.calculateVPD(leafTemp, airTemp, humidity);
-        this.vpdResult = VPDCalculator.getVPDPhase(vpd, (_d = this.config.vpd_calculation) === null || _d === void 0 ? void 0 : _d.phases);
-    }
-    renderEnvironmentalSensors() {
-        return x `
-      <div class="environmental-sensors">
-        <div class="sensor-group">
-          <h3>Inner Environment</h3>
-          <div class="sensors">
-            ${this.renderSensor(this.config.inner_temp_entity, '°C', 'temperature')}
-            ${this.renderSensor(this.config.inner_humidity_entity, '%', 'humidity')}
-            ${this.renderSensor(this.config.leaf_temp_entity, '°C', 'leaf-temperature')}
-          </div>
-        </div>
-        <div class="sensor-group">
-          <h3>Outer Environment</h3>
-          <div class="sensors">
-            ${this.renderSensor(this.config.outer_temp_entity, '°C', 'temperature')}
-            ${this.renderSensor(this.config.outer_humidity_entity, '%', 'humidity')}
-          </div>
-        </div>
-      </div>
-    `;
-    }
-    renderSensor(entityId, unit, type) {
-        if (!entityId || !this.hass.states[entityId]) {
-            return x `<div class="sensor unavailable">N/A</div>`;
+        const temp = parseFloat(tempState.state);
+        const humidity = parseFloat(humidityState.state);
+        const leafTemp = parseFloat(leafTempState.state);
+        // VPD calculation
+        const satVaporPressure = 610.7 * Math.exp(17.27 * temp / (temp + 237.3)) / 1000;
+        const actualVaporPressure = satVaporPressure * (humidity / 100);
+        const leafSatVaporPressure = 610.7 * Math.exp(17.27 * leafTemp / (leafTemp + 237.3)) / 1000;
+        const vpd = leafSatVaporPressure - actualVaporPressure;
+        // Determine growth phase based on VPD
+        let phase = 'Unknown';
+        let color = '#666';
+        if (vpd < 0.4) {
+            phase = 'Too Low';
+            color = '#f44336';
         }
-        const state = this.hass.states[entityId];
-        const value = parseFloat(state.state);
-        const displayValue = isNaN(value) ? state.state : value.toFixed(1);
-        return x `
-      <div class="sensor ${type}">
-        <span class="value">${displayValue}</span>
-        <span class="unit">${unit}</span>
-        <span class="name">${state.attributes.friendly_name || entityId}</span>
-      </div>
-    `;
-    }
-    renderVPD() {
-        var _a;
-        if (!this.vpdResult || ((_a = this.config.vpd_calculation) === null || _a === void 0 ? void 0 : _a.enabled) === false) {
-            return x ``;
+        else if (vpd <= 0.8) {
+            phase = 'Seedling';
+            color = '#4caf50';
         }
-        return x `
-      <div class="vpd-display" style="--vpd-color: ${this.vpdResult.color}">
-        <h3>VPD Status</h3>
-        <div class="vpd-value">${VPDCalculator.formatVPD(this.vpdResult.vpd)}</div>
-        <div class="vpd-phase">${this.vpdResult.phase}</div>
-      </div>
-    `;
-    }
-    renderControls() {
-        return x `
-      <div class="controls">
-        <h3>Controls</h3>
-        <div class="control-grid">
-          ${this.renderControl(this.config.light_entity, 'Light', 'lightbulb')}
-          ${this.renderControl(this.config.heating_entity, 'Heating', 'radiator')}
-          ${this.renderControl(this.config.ventilation_entity, 'Ventilation', 'fan')}
-        </div>
-        ${this.renderVents()}
-      </div>
-    `;
-    }
-    renderControl(entityId, name, icon) {
-        if (!entityId || !this.hass.states[entityId]) {
-            return x `<div class="control unavailable">${name}: N/A</div>`;
+        else if (vpd <= 1.0) {
+            phase = 'Vegetative';
+            color = '#2196f3';
         }
-        const state = this.hass.states[entityId];
-        const isOn = ['on', 'open', 'home'].includes(state.state.toLowerCase());
-        return x `
-      <div class="control ${isOn ? 'on' : 'off'}" @click=${() => this.toggleEntity(entityId)}>
-        <div class="control-icon ${icon}"></div>
-        <div class="control-name">${name}</div>
-        <div class="control-state">${state.state}</div>
-      </div>
-    `;
-    }
-    renderVents() {
-        var _a;
-        if (!((_a = this.config.vents) === null || _a === void 0 ? void 0 : _a.length))
-            return x ``;
-        return x `
-      <div class="vents">
-        <h4>Vents</h4>
-        <div class="vent-controls">
-          ${this.config.vents.map(vent => this.renderVentControl(vent))}
-        </div>
-      </div>
-    `;
-    }
-    renderVentControl(vent) {
-        const state = this.hass.states[vent.entity];
-        if (!state)
-            return x `<div class="vent unavailable">${vent.name}: N/A</div>`;
-        const isOpen = state.state === 'open';
-        return x `
-      <div class="vent-control ${isOpen ? 'open' : 'closed'}" @click=${() => this.toggleEntity(vent.entity)}>
-        <span class="vent-name">${vent.name}</span>
-        <span class="vent-state">${state.state}</span>
-      </div>
-    `;
-    }
-    renderPlants() {
-        var _a;
-        if (!((_a = this.config.plants) === null || _a === void 0 ? void 0 : _a.length)) {
-            return x `
-        <div class="plant-pots">
-          <div class="plant-pot empty"><span>1</span></div>
-          <div class="plant-pot empty"><span>2</span></div>
-          <div class="plant-pot empty"><span>3</span></div>
-          <div class="plant-pot empty"><span>4</span></div>
-        </div>
-      `;
+        else if (vpd <= 1.3) {
+            phase = 'Flowering';
+            color = '#9c27b0';
         }
-        const plantsByPosition = new Map();
-        this.config.plants.forEach(plant => {
-            plantsByPosition.set(plant.position || 1, plant);
-        });
-        return x `
-      <div class="plant-pots">
-        ${[1, 2, 3, 4].map(position => {
-            const plant = plantsByPosition.get(position);
-            return this.renderPlantPot(plant, position);
-        })}
-      </div>
-    `;
-    }
-    renderPlantPot(plant, position) {
-        if (!plant) {
-            return x `
-        <div class="plant-pot empty">
-          <span class="pot-number">${position}</span>
-        </div>
-      `;
+        else {
+            phase = 'Too High';
+            color = '#f44336';
         }
-        const state = this.hass.states[plant.entity];
-        const hasState = !!state;
-        const isHealthy = hasState && state.state === 'ok';
-        return x `
-      <div class="plant-pot ${hasState ? (isHealthy ? 'healthy' : 'attention') : 'unavailable'}" 
-           title="${plant.name}${hasState ? ` - ${state.state}` : ' - No data'}">
-        <div class="plant-visual">
-          <div class="plant-leaves ${isHealthy ? 'green' : 'yellow'}"></div>
-          <div class="plant-stem"></div>
-        </div>
-        <div class="pot-base">
-          <span class="pot-number">${position}</span>
-        </div>
-        <div class="plant-name">${plant.name}</div>
-      </div>
-    `;
-    }
-    renderCamera() {
-        if (!this.config.camera_entity)
-            return x ``;
-        return x `
-      <div class="camera">
-        <h3>Live View</h3>
-        <ha-camera-stream
-          .hass=${this.hass}
-          .stateObj=${this.hass.states[this.config.camera_entity]}
-          allow-exoplayer
-        ></ha-camera-stream>
-      </div>
-    `;
-    }
-    toggleEntity(entityId) {
-        var _a;
-        const domain = entityId.split('.')[0];
-        const service = ((_a = this.hass.states[entityId]) === null || _a === void 0 ? void 0 : _a.state) === 'on' ? 'turn_off' : 'turn_on';
-        this.hass.callService(domain, service, { entity_id: entityId });
-    }
-    renderComponent(type, name, entityId, number, position) {
-        const entity = entityId ? this.hass.states[entityId] : null;
-        const isOn = entity ? ['on', 'open', 'home'].includes(entity.state.toLowerCase()) : false;
-        const isClickable = !!entityId;
-        return x `
-      <div 
-        class="component ${type} ${position} ${isOn ? 'active' : 'inactive'} ${isClickable ? 'clickable' : ''}"
-        @click=${isClickable ? () => this.toggleEntity(entityId) : null}
-        title="${name}${entity ? ` (${entity.state})` : ''}"
-      >
-        <div class="component-number">${number}</div>
-        <div class="component-icon ${type}"></div>
-      </div>
-    `;
+        return { vpd, phase, color };
     }
     renderStatusIndicator(entityId) {
-        if (!entityId || !this.hass.states[entityId]) {
-            return x `<span class="status-indicator unavailable">N/A</span>`;
+        if (!entityId || !this.hass) {
+            return x `<span class="status-indicator unknown">?</span>`;
         }
-        const entity = this.hass.states[entityId];
-        const isOn = ['on', 'open', 'home'].includes(entity.state.toLowerCase());
-        return x `
-      <span class="status-indicator ${isOn ? 'on' : 'off'}" @click=${() => this.toggleEntity(entityId)}>
-        ${entity.state}
-      </span>
-    `;
-    }
-    renderSensorValue(entityId, unit) {
-        if (!entityId || !this.hass.states[entityId]) {
-            return x `<span class="sensor-value unavailable">--</span>`;
+        const state = this.hass.states[entityId];
+        if (!state) {
+            return x `<span class="status-indicator unknown">?</span>`;
         }
-        const entity = this.hass.states[entityId];
-        const value = parseFloat(entity.state);
-        const displayValue = isNaN(value) ? entity.state : value.toFixed(1);
-        return x `
-      <span class="sensor-value">${displayValue}${unit}</span>
-    `;
-    }
-    isEntityOn(entityId) {
-        if (!entityId || !this.hass.states[entityId]) {
-            return false;
-        }
-        const entity = this.hass.states[entityId];
-        return ['on', 'open', 'home'].includes(entity.state.toLowerCase());
+        const isOn = state.state === 'on' || state.state === 'heat' || state.state === 'cool' || parseFloat(state.state) > 0;
+        const className = isOn ? 'on' : 'off';
+        const icon = isOn ? '●' : '○';
+        return x `<span class="status-indicator ${className}">${icon}</span>`;
     }
     renderPlantsSimple() {
-        var _a;
-        if (!((_a = this.config.plants) === null || _a === void 0 ? void 0 : _a.length)) {
-            return x `
-        <div class="plant-positions">
-          <div class="plant-pot empty" style="--position: 1;"><span>1</span></div>
-          <div class="plant-pot empty" style="--position: 2;"><span>2</span></div>
-          <div class="plant-pot empty" style="--position: 3;"><span>3</span></div>
-          <div class="plant-pot empty" style="--position: 4;"><span>4</span></div>
-        </div>
-      `;
+        if (!this.config.plants) {
+            return x ``;
         }
-        const plantsByPosition = new Map();
-        this.config.plants.forEach(plant => {
-            plantsByPosition.set(plant.position || 1, plant);
-        });
         return x `
       <div class="plant-positions">
-        ${[1, 2, 3, 4].map(position => {
-            const plant = plantsByPosition.get(position);
-            if (!plant) {
-                return x `<div class="plant-pot empty" style="--position: ${position};"><span>${position}</span></div>`;
+        ${this.config.plants.map((plant, index) => {
+            const position = (index + 1).toString();
+            if (!plant.entity) {
+                return x `
+              <div class="plant-pot empty" 
+                   style="--position: ${position};" 
+                   title="Empty position ${position}">
+                <div class="plant-icon">🌱</div>
+                <span>${position}</span>
+              </div>
+            `;
             }
             const state = this.hass.states[plant.entity];
             const isHealthy = state && state.state === 'ok';
@@ -430,6 +191,7 @@ let GrowBoxCard = class GrowBoxCard extends i {
     `;
     }
     render() {
+        var _a, _b, _c, _d, _e;
         if (!this.config || !this.hass) {
             return x ``;
         }
@@ -443,7 +205,27 @@ let GrowBoxCard = class GrowBoxCard extends i {
                 <!-- Background tent visualization -->
                 <div class="tent-background"></div>
                 
-                <!-- Component positions -->
+                <!-- Plants area -->
+                <div class="plants-area">
+                  ${this.renderPlantsSimple()}
+                </div>
+
+                <!-- Camera overlay if configured -->
+                ${this.config.camera_entity ? x `
+                  <div class="camera-overlay">
+                    <div class="camera-feed">
+                      <ha-camera-stream
+                        .hass=${this.hass}
+                        .stateObj=${this.hass.states[this.config.camera_entity]}
+                        allow-exoplayer
+                      ></ha-camera-stream>
+                    </div>
+                  </div>
+                ` : ''}
+              </div>
+              
+              <!-- Components Row underneath tent -->
+              <div class="components-row">
                 <div class="component extractor-pos" title="Extractor">
                   <div class="component-circle red">
                     <div class="component-number">1</div>
@@ -465,30 +247,14 @@ let GrowBoxCard = class GrowBoxCard extends i {
                   </div>
                 </div>
 
-                <!-- Reflector and Light Assembly -->
-                <div class="reflector-system">
-                  <div class="reflector-hood">
-                    <div class="component-number">3</div>
-                    <span class="reflector-label">Reflector</span>
-                  </div>
-                  <div class="growth-light ${this.isEntityOn(this.config.light_entity) ? 'active' : 'inactive'}" 
-                       @click=${this.config.light_entity ? () => this.toggleEntity(this.config.light_entity) : null}>
-                    <div class="component-number">4</div>
-                    <div class="light-icon">💡</div>
-                  </div>
-                  <div class="light-beam ${this.isEntityOn(this.config.light_entity) ? 'active' : 'inactive'}"></div>
-                </div>
-
-                <!-- Side components -->
-                <div class="component ballast-pos" title="Ballast/Heating">
-                  <div class="component-circle ${this.isEntityOn(this.config.heating_entity) ? 'green' : 'red'}"
-                       @click=${this.config.heating_entity ? () => this.toggleEntity(this.config.heating_entity) : null}>
+                <div class="component ballast-pos" title="Ballast">
+                  <div class="component-circle green">
                     <div class="component-number">5</div>
                     <div class="component-icon">⚡</div>
                   </div>
                 </div>
 
-                <div class="component intake-pos" title="Intake Fan">
+                <div class="component intake-pos" title="Intake">
                   <div class="component-circle blue">
                     <div class="component-number">6</div>
                     <div class="component-icon">🌬️</div>
@@ -508,24 +274,6 @@ let GrowBoxCard = class GrowBoxCard extends i {
                     <div class="component-icon">🎛️</div>
                   </div>
                 </div>
-
-                <!-- Plants area -->
-                <div class="plants-area">
-                  ${this.renderPlantsSimple()}
-                </div>
-
-                <!-- Camera overlay if configured -->
-                ${this.config.camera_entity ? x `
-                  <div class="camera-overlay">
-                    <div class="camera-feed">
-                      <ha-camera-stream
-                        .hass=${this.hass}
-                        .stateObj=${this.hass.states[this.config.camera_entity]}
-                        allow-exoplayer
-                      ></ha-camera-stream>
-                    </div>
-                  </div>
-                ` : ''}
               </div>
             </div>
 
@@ -541,66 +289,71 @@ let GrowBoxCard = class GrowBoxCard extends i {
                 <div class="legend-item">
                   <span class="legend-number">2</span>
                   <span class="legend-text">Carbon Filter</span>
-                </div>
-                <div class="legend-item">
-                  <span class="legend-number">3</span>
-                  <span class="legend-text">Reflector</span>
-                </div>
-                <div class="legend-item">
-                  <span class="legend-number">4</span>
-                  <span class="legend-text">Growth Light</span>
-                  ${this.renderStatusIndicator(this.config.light_entity)}
+                  <span class="status-indicator passive">-</span>
                 </div>
                 <div class="legend-item">
                   <span class="legend-number">5</span>
                   <span class="legend-text">Ballast</span>
-                  ${this.renderStatusIndicator(this.config.heating_entity)}
+                  ${this.renderStatusIndicator(this.config.ballast_entity)}
                 </div>
                 <div class="legend-item">
                   <span class="legend-number">6</span>
-                  <span class="legend-text">Intake Fan</span>
+                  <span class="legend-text">Intake</span>
+                  <span class="status-indicator passive">-</span>
                 </div>
                 <div class="legend-item">
                   <span class="legend-number">7</span>
                   <span class="legend-text">Ventilator</span>
+                  <span class="status-indicator passive">-</span>
                 </div>
                 <div class="legend-item">
                   <span class="legend-number">8</span>
                   <span class="legend-text">Thermostat</span>
+                  <span class="status-indicator passive">-</span>
                 </div>
                 <div class="legend-item">
                   <span class="legend-number">9</span>
                   <span class="legend-text">Temp/Humidity</span>
-                  ${this.renderSensorValue(this.config.inner_temp_entity, '°C')}
-                  ${this.renderSensorValue(this.config.inner_humidity_entity, '%')}
+                  ${this.renderStatusIndicator(this.config.inner_temp_entity)}
                 </div>
               </div>
+            </div>
 
-              <!-- VPD Display -->
-              ${this.renderVPD()}
-
-              <!-- Environmental Data -->
-              <div class="environmental-data">
-                <h4>Environment</h4>
-                <div class="env-grid">
-                  <div class="env-item">
-                    <span class="env-label">Inner Temp</span>
-                    ${this.renderSensorValue(this.config.inner_temp_entity, '°C')}
-                  </div>
-                  <div class="env-item">
-                    <span class="env-label">Inner Humidity</span>
-                    ${this.renderSensorValue(this.config.inner_humidity_entity, '%')}
-                  </div>
-                  <div class="env-item">
-                    <span class="env-label">Leaf Temp</span>
-                    ${this.renderSensorValue(this.config.leaf_temp_entity, '°C')}
-                  </div>
-                  <div class="env-item">
-                    <span class="env-label">Outer Temp</span>
-                    ${this.renderSensorValue(this.config.outer_temp_entity, '°C')}
-                  </div>
+            <!-- Sensor Data Panel -->
+            <div class="sensor-panel">
+              <h3>Environmental Data</h3>
+              <div class="sensor-row">
+                <div class="sensor-item">
+                  <span class="sensor-label">Inside Temp</span>
+                  <span class="sensor-value">${this.config.inner_temp_entity ? (((_a = this.hass.states[this.config.inner_temp_entity]) === null || _a === void 0 ? void 0 : _a.state) || 'N/A') : 'N/A'}°C</span>
+                </div>
+                <div class="sensor-item">
+                  <span class="sensor-label">Inside Humidity</span>
+                  <span class="sensor-value">${this.config.inner_humidity_entity ? (((_b = this.hass.states[this.config.inner_humidity_entity]) === null || _b === void 0 ? void 0 : _b.state) || 'N/A') : 'N/A'}%</span>
                 </div>
               </div>
+              <div class="sensor-row">
+                <div class="sensor-item">
+                  <span class="sensor-label">Outside Temp</span>
+                  <span class="sensor-value">${this.config.outer_temp_entity ? (((_c = this.hass.states[this.config.outer_temp_entity]) === null || _c === void 0 ? void 0 : _c.state) || 'N/A') : 'N/A'}°C</span>
+                </div>
+                <div class="sensor-item">
+                  <span class="sensor-label">Outside Humidity</span>
+                  <span class="sensor-value">${this.config.outer_humidity_entity ? (((_d = this.hass.states[this.config.outer_humidity_entity]) === null || _d === void 0 ? void 0 : _d.state) || 'N/A') : 'N/A'}%</span>
+                </div>
+              </div>
+              ${((_e = this.config.vpd) === null || _e === void 0 ? void 0 : _e.enabled) ? (() => {
+            const vpdData = this.calculateVPD();
+            return x `
+                  <div class="vpd-section">
+                    <h4>VPD Status</h4>
+                    <div class="vpd-indicator" style="background: ${vpdData.color}">
+                      <span class="vpd-value">${vpdData.vpd.toFixed(2)} kPa</span>
+                      <span class="vpd-phase">${vpdData.phase}</span>
+                    </div>
+                  </div>
+                `;
+        })() : ''}
             </div>
           </div>
         </div>
@@ -609,20 +362,19 @@ let GrowBoxCard = class GrowBoxCard extends i {
     }
     static get styles() {
         return i$3 `
-      ha-card {
-        padding: 0;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      :host {
+        display: block;
+        font-family: var(--ha-card-font-family, inherit);
       }
 
       .card-content {
-        padding: 20px;
+        padding: 16px;
       }
 
       .grow-tent-schema {
-        display: grid;
-        grid-template-columns: 2fr 1fr;
-        gap: 24px;
-        min-height: 500px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
       }
 
       /* Main Tent Container */
@@ -651,12 +403,12 @@ let GrowBoxCard = class GrowBoxCard extends i {
         left: 0;
         right: 0;
         bottom: 0;
-        background: linear-gradient(to bottom, #e8e8e8 0%, #d0d0d0 100%);
+        background: linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 50%, #e8f5e8 100%);
         border-radius: 4px;
-        box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
+        opacity: 0.8;
       }
 
-      /* Component Positioning */
+      /* Component Styling */
       .component {
         position: absolute;
         z-index: 10;
@@ -710,92 +462,24 @@ let GrowBoxCard = class GrowBoxCard extends i {
         margin-bottom: 2px;
       }
 
-      /* Specific Component Positions - Moved underneath tent */
-      .extractor-pos { bottom: -80px; left: 20px; }
-      .filter-pos { bottom: -80px; left: 50%; transform: translateX(-50%); }
-      .thermo-pos { bottom: -80px; right: 20px; }
-      .ballast-pos { bottom: -80px; left: 200px; }
-      .intake-pos { bottom: -80px; right: 80px; }
-      .ventilator-pos { bottom: -80px; right: 20px; }
-      .thermostat-pos { bottom: -80px; left: 140px; }
-
-      /* Reflector System */
-      .reflector-system {
-        position: absolute;
-        top: 60px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 5;
-      }
-
-      .reflector-hood {
-        width: 180px;
-        height: 30px;
-        background: linear-gradient(145deg, #e0e0e0, #c0c0c0);
-        border: 2px solid #888;
-        border-radius: 15px 15px 5px 5px;
+      /* Components Row Layout */
+      .components-row {
         display: flex;
+        justify-content: space-around;
         align-items: center;
-        justify-content: center;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        position: relative;
-        margin-bottom: 10px;
+        margin-top: 20px;
+        padding: 15px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        flex-wrap: wrap;
+        gap: 10px;
       }
 
-      .reflector-label {
-        font-size: 12px;
-        font-weight: bold;
-        color: #333;
-      }
-
-      .growth-light {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        position: relative;
-      }
-
-      .growth-light.active {
-        background: linear-gradient(145deg, #ffeb3b, #ffc107);
-        border: 2px solid #ff9800;
-        box-shadow: 0 0 20px rgba(255, 235, 59, 0.6);
-      }
-
-      .growth-light.inactive {
-        background: linear-gradient(145deg, #9e9e9e, #757575);
-        border: 2px solid #616161;
-      }
-
-      .light-icon {
-        font-size: 20px;
-      }
-
-      .light-beam {
-        position: absolute;
-        top: 40px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 0;
-        height: 0;
-        border-left: 70px solid transparent;
-        border-right: 70px solid transparent;
-        transition: all 0.3s ease;
-        z-index: 1;
-      }
-
-      .light-beam.active {
-        border-top: 120px solid rgba(255, 255, 0, 0.4);
-      }
-
-      .light-beam.inactive {
-        border-top: 120px solid rgba(200, 200, 200, 0.2);
+      /* Reset component positioning for row layout */
+      .extractor-pos, .filter-pos, .thermo-pos, .ballast-pos, 
+      .intake-pos, .ventilator-pos, .thermostat-pos {
+        position: static;
+        transform: none;
       }
 
       /* Plants Area */
@@ -861,66 +545,64 @@ let GrowBoxCard = class GrowBoxCard extends i {
       /* Camera Overlay */
       .camera-overlay {
         position: absolute;
-        top: 15px;
-        right: 15px;
-        z-index: 15;
-      }
-
-      .camera-feed {
+        top: 10px;
+        right: 10px;
         width: 120px;
         height: 90px;
         border-radius: 8px;
         overflow: hidden;
         border: 2px solid #333;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        z-index: 8;
+      }
+
+      .camera-feed {
+        width: 100%;
+        height: 100%;
+      }
+
+      .camera-feed ha-camera-stream {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
       }
 
       /* Legend Panel */
       .legend-panel {
-        background: white;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        height: fit-content;
+        background: var(--ha-card-background, var(--card-background-color, white));
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       }
 
       .legend-panel h3 {
-        margin: 0 0 16px 0;
-        color: var(--primary-color);
-        font-size: 18px;
-        border-bottom: 2px solid var(--primary-color);
-        padding-bottom: 8px;
+        margin: 0 0 12px 0;
+        color: var(--primary-text-color);
+        font-size: 16px;
+        font-weight: 500;
       }
 
       .legend-items {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 8px;
       }
 
       .legend-item {
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 8px;
-        border-radius: 6px;
-        background: rgba(0, 122, 204, 0.05);
-        transition: all 0.2s ease;
-      }
-
-      .legend-item:hover {
-        background: rgba(0, 122, 204, 0.1);
+        gap: 8px;
+        padding: 4px;
       }
 
       .legend-number {
-        width: 24px;
-        height: 24px;
-        background: #007acc;
-        color: white;
-        border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
+        width: 20px;
+        height: 20px;
+        background: #007acc;
+        color: white;
+        border-radius: 50%;
         font-size: 12px;
         font-weight: bold;
         flex-shrink: 0;
@@ -930,16 +612,16 @@ let GrowBoxCard = class GrowBoxCard extends i {
         flex: 1;
         font-size: 14px;
         color: var(--primary-text-color);
-        font-weight: 500;
       }
 
       .status-indicator {
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: bold;
-        cursor: pointer;
-        transition: all 0.2s ease;
+        padding: 2px 6px;
+        border-radius: 10px;
+        min-width: 16px;
+        text-align: center;
+        flex-shrink: 0;
       }
 
       .status-indicator.on {
@@ -952,117 +634,109 @@ let GrowBoxCard = class GrowBoxCard extends i {
         color: white;
       }
 
-      .status-indicator.unavailable {
+      .status-indicator.unknown {
         background: #9e9e9e;
         color: white;
       }
 
-      .sensor-value {
-        font-size: 13px;
-        font-weight: bold;
-        color: var(--primary-color);
+      .status-indicator.passive {
+        background: #e0e0e0;
+        color: #666;
       }
 
-      .sensor-value.unavailable {
-        color: #9e9e9e;
-      }
-
-      /* VPD Display */
-      .vpd-display {
-        margin: 20px 0;
-        text-align: center;
-        padding: 16px;
+      /* Sensor Panel */
+      .sensor-panel {
+        background: var(--ha-card-background, var(--card-background-color, white));
         border-radius: 8px;
-        background: linear-gradient(145deg, var(--vpd-color, #e0e0e0), rgba(255,255,255,0.1));
-        border: 2px solid var(--vpd-color, #ccc);
+        padding: 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       }
 
-      .vpd-display h3 {
-        margin: 0 0 8px 0;
-        color: var(--primary-color);
-        border: none;
-        padding: 0;
-      }
-
-      .vpd-value {
-        font-size: 20px;
-        font-weight: bold;
-        color: var(--vpd-color, #333);
-      }
-
-      .vpd-phase {
-        font-size: 12px;
-        margin-top: 4px;
-        opacity: 0.8;
-      }
-
-      /* Environmental Data */
-      .environmental-data {
-        margin-top: 20px;
-      }
-
-      .environmental-data h4 {
+      .sensor-panel h3 {
         margin: 0 0 12px 0;
-        color: var(--primary-color);
-        font-size: 14px;
+        color: var(--primary-text-color);
+        font-size: 16px;
+        font-weight: 500;
       }
 
-      .env-grid {
+      .sensor-row {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 8px;
+        gap: 16px;
+        margin-bottom: 8px;
       }
 
-      .env-item {
+      .sensor-item {
         display: flex;
         flex-direction: column;
         gap: 4px;
-        padding: 8px;
-        background: rgba(0, 122, 204, 0.05);
-        border-radius: 4px;
       }
 
-      .env-label {
-        font-size: 11px;
+      .sensor-label {
+        font-size: 12px;
         color: var(--secondary-text-color);
-        text-transform: uppercase;
+        font-weight: 500;
+      }
+
+      .sensor-value {
+        font-size: 18px;
         font-weight: 600;
+        color: var(--primary-text-color);
+      }
+
+      /* VPD Section */
+      .vpd-section {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--divider-color);
+      }
+
+      .vpd-section h4 {
+        margin: 0 0 8px 0;
+        color: var(--primary-text-color);
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .vpd-indicator {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 12px;
+        border-radius: 8px;
+        color: white;
+        text-align: center;
+      }
+
+      .vpd-value {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 4px;
+      }
+
+      .vpd-phase {
+        font-size: 14px;
+        font-weight: 500;
+        opacity: 0.9;
       }
 
       /* Responsive Design */
-      @media (max-width: 768px) {
-        .grow-tent-schema {
+      @media (max-width: 600px) {
+        .legend-items {
           grid-template-columns: 1fr;
-          gap: 16px;
         }
-        
+
+        .sensor-row {
+          grid-template-columns: 1fr;
+        }
+
         .tent-frame {
-          height: 350px;
+          height: 300px;
         }
 
-        .component-circle {
-          width: 40px;
-          height: 40px;
-        }
-
-        .reflector-hood {
-          width: 140px;
-          height: 25px;
-        }
-
-        .light-beam.active,
-        .light-beam.inactive {
-          border-left-width: 50px;
-          border-right-width: 50px;
-          border-top-width: 90px;
-        }
-
-        .plant-positions {
-          gap: 15px;
-        }
-
-        .env-grid {
-          grid-template-columns: 1fr;
+        .components-row {
+          flex-direction: column;
+          gap: 8px;
         }
       }
     `;
@@ -1070,24 +744,21 @@ let GrowBoxCard = class GrowBoxCard extends i {
 };
 __decorate([
     n({ attribute: false })
-], GrowBoxCard.prototype, "hass", void 0);
+], HaGrowBoxCard.prototype, "hass", void 0);
 __decorate([
     r$1()
-], GrowBoxCard.prototype, "config", void 0);
-__decorate([
-    r$1()
-], GrowBoxCard.prototype, "vpdResult", void 0);
-GrowBoxCard = __decorate([
+], HaGrowBoxCard.prototype, "config", void 0);
+HaGrowBoxCard = __decorate([
     t$1('ha-grow-box-card')
-], GrowBoxCard);
-// Register the card
+], HaGrowBoxCard);
 window.customCards = window.customCards || [];
 window.customCards.push({
     type: 'ha-grow-box-card',
     name: 'Grow Box Card',
-    description: 'A card for monitoring and controlling cannabis grow tents'
+    description: 'A comprehensive card for monitoring cannabis grow tent systems'
 });
-console.info(`%c  HA-GROW-BOX-CARD  %c  Version 1.0.0  `, 'color: orange; font-weight: bold; background: black', 'color: white; font-weight: bold; background: dimgray');
+
+var t,r;!function(e){e.language="language",e.system="system",e.comma_decimal="comma_decimal",e.decimal_comma="decimal_comma",e.space_comma="space_comma",e.none="none";}(t||(t={})),function(e){e.language="language",e.system="system",e.am_pm="12",e.twenty_four="24";}(r||(r={}));var ne=function(e,t,r,n){n=n||{},r=null==r?{}:r;var i=new Event(t,{bubbles:void 0===n.bubbles||n.bubbles,cancelable:Boolean(n.cancelable),composed:void 0===n.composed||n.composed});return i.detail=r,e.dispatchEvent(i),i};
 
 let GrowBoxCardEditor = class GrowBoxCardEditor extends i {
     setConfig(config) {
@@ -1627,4 +1298,4 @@ var editor = /*#__PURE__*/Object.freeze({
     get GrowBoxCardEditor () { return GrowBoxCardEditor; }
 });
 
-export { GrowBoxCard };
+export { HaGrowBoxCard };
