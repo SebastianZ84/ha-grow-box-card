@@ -306,6 +306,10 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
       if (plant?.entity) {
         const plantEntity = this.hass.states[plant.entity];
         if (plantEntity) {
+          // Debug: Log plant entity data to console
+          console.log(`Plant ${plant.entity} found:`, plantEntity);
+          console.log(`Plant attributes:`, plantEntity.attributes);
+          
           const healthData = this.calculatePlantHealth(plantEntity);
           
           plantData = {
@@ -317,15 +321,19 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
             status: healthData.status,
             healthColor: healthData.color
           };
+          
+          // Debug: Log retrieved values
+          console.log(`Plant ${plant.entity} sensor values:`, plantData);
         } else {
           // Entity exists but not found in states
+          console.log(`Plant entity ${plant.entity} not found in Home Assistant states`);
           plantData = {
             moisture: 'Entity not found',
             light: 'Entity not found',
             temp: 'Entity not found',
             ec: 'Entity not found',
             health: 0,
-            status: 'Entity not found',
+            status: 'Check console & setup guide',
             healthColor: '#f44336'
           };
         }
