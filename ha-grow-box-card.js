@@ -492,6 +492,7 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         }
     }
     renderPlantGrid() {
+        var _a, _b;
         const plants = this.config.plants || [];
         const plantColors = ['#4CAF50', '#8BC34A', '#CDDC39', '#FFC107'];
         const plantIcons = ['🌿', '🌱', '🌿', '🌱'];
@@ -501,8 +502,10 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             { x: 40, y: 440 }, // Plant 3 (Bottom Left)
             { x: 210, y: 440 } // Plant 4 (Bottom Right)
         ];
-        return positions.map((pos, index) => {
-            var _a, _b;
+        // Create array of plant elements and convert to HTML
+        const plantElements = [];
+        for (let index = 0; index < positions.length; index++) {
+            const pos = positions[index];
             const plant = plants[index];
             const color = plantColors[index];
             const icon = plantIcons[index];
@@ -574,7 +577,7 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             }
             const healthBarWidth = Math.max(0, Math.min(130, (plantData.health / 100) * 130));
             const displayName = (plant === null || plant === void 0 ? void 0 : plant.name) || ((plant === null || plant === void 0 ? void 0 : plant.entity) ? (_b = (_a = this.hass.states[plant.entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name : null) || `Pflanze ${plantNum}`;
-            return x `
+            plantElements.push(x `
         <g id="plant${plantNum}">
           <rect x="${pos.x}" y="${pos.y}" width="150" height="130" fill="#2d2d2d" rx="8" stroke="${color}" stroke-width="1"/>
           <text x="${pos.x + 75}" y="${pos.y + 20}" font-family="Arial" font-size="20" text-anchor="middle">${icon}</text>
@@ -589,8 +592,9 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             <text x="65" y="45" font-family="Arial" font-size="9" fill="${plantData.healthColor}" text-anchor="middle">${plantData.status} - ${Math.round(plantData.health)}%</text>
           </g>
         </g>
-      `;
-        });
+      `);
+        }
+        return plantElements;
     }
     render() {
         var _a, _b, _c, _d;
@@ -673,18 +677,6 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             
             <!-- Growbox Schema -->
             <rect x="20" y="265" width="360" height="315" fill="#1a1a1a" stroke="#4CAF50" stroke-width="2" rx="8"/>
-            
-            <!-- Test Plant (Hard-coded) -->
-            <g id="test-plant">
-              <rect x="40" y="300" width="150" height="130" fill="#2d2d2d" rx="8" stroke="#4CAF50" stroke-width="1"/>
-              <text x="115" y="320" font-family="Arial" font-size="20" text-anchor="middle">🌿</text>
-              <text x="115" y="345" font-family="Arial" font-size="12" fill="#4CAF50" text-anchor="middle">Test Plant</text>
-              <text x="50" y="365" font-family="Arial" font-size="10" fill="#888">💧 23.0%</text>
-              <text x="110" y="365" font-family="Arial" font-size="10" fill="#888">🌡️ 16.7°C</text>
-              <rect x="50" y="380" width="100" height="6" fill="#444" rx="3"/>
-              <rect x="50" y="380" width="30" height="6" fill="#f44336" rx="3"/>
-              <text x="100" y="405" font-family="Arial" font-size="9" fill="#f44336" text-anchor="middle">Problem - 30%</text>
-            </g>
             
             ${this.renderPlantGrid()}
           </svg>
