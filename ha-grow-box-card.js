@@ -688,270 +688,377 @@ let GrowBoxCardEditor = class GrowBoxCardEditor extends i {
         var _a;
         return ((_a = this._config) === null || _a === void 0 ? void 0 : _a.name) || '';
     }
-    get _inner_temp_entity() {
-        var _a;
-        return ((_a = this._config) === null || _a === void 0 ? void 0 : _a.inner_temp_entity) || '';
-    }
-    get _inner_humidity_entity() {
-        var _a;
-        return ((_a = this._config) === null || _a === void 0 ? void 0 : _a.inner_humidity_entity) || '';
-    }
-    get _outer_temp_entity() {
-        var _a;
-        return ((_a = this._config) === null || _a === void 0 ? void 0 : _a.outer_temp_entity) || '';
-    }
-    get _outer_humidity_entity() {
-        var _a;
-        return ((_a = this._config) === null || _a === void 0 ? void 0 : _a.outer_humidity_entity) || '';
-    }
-    get _leaf_temp_entity() {
-        var _a;
-        return ((_a = this._config) === null || _a === void 0 ? void 0 : _a.leaf_temp_entity) || '';
-    }
-    get _light_entity() {
-        var _a;
-        return ((_a = this._config) === null || _a === void 0 ? void 0 : _a.light_entity) || '';
-    }
-    get _heating_entity() {
-        var _a;
-        return ((_a = this._config) === null || _a === void 0 ? void 0 : _a.heating_entity) || '';
-    }
-    get _ventilation_entity() {
-        var _a;
-        return ((_a = this._config) === null || _a === void 0 ? void 0 : _a.ventilation_entity) || '';
-    }
-    get _camera_entity() {
-        var _a;
-        return ((_a = this._config) === null || _a === void 0 ? void 0 : _a.camera_entity) || '';
-    }
     render() {
         var _a;
         if (!this.hass || !this._config) {
             return x ``;
         }
-        Object.keys(this.hass.states).map(entity => ({
-            value: entity,
-            label: `${entity} (${this.hass.states[entity].attributes.friendly_name || entity})`
-        }));
+        // Get all entities and filter by domain
+        const allEntities = Object.keys(this.hass.states);
+        const sensorEntities = allEntities.filter(entity => entity.startsWith('sensor.'));
+        const lightEntities = allEntities.filter(entity => entity.startsWith('light.') || entity.startsWith('switch.'));
+        const fanEntities = allEntities.filter(entity => entity.startsWith('fan.') || entity.startsWith('switch.'));
+        const coverEntities = allEntities.filter(entity => entity.startsWith('cover.') || entity.startsWith('switch.'));
+        const cameraEntities = allEntities.filter(entity => entity.startsWith('camera.'));
+        const plantEntities = allEntities.filter(entity => entity.startsWith('plant.') || entity.startsWith('sensor.'));
         return x `
       <div class="card-config">
         <h3>Basic Configuration</h3>
         
-        <paper-input
-          label="Name (Optional)"
-          .value=${this._name}
-          .configValue=${'name'}
-          @value-changed=${this._valueChanged}
-        ></paper-input>
+        <div class="form-group">
+          <label for="name">Name (Optional)</label>
+          <input
+            id="name"
+            type="text"
+            .value=${this._name}
+            @input=${(ev) => this._valueChanged('name', ev.target.value)}
+            placeholder="Grow Tent"
+          />
+        </div>
 
         <h3>Environmental Sensors</h3>
         
-        <ha-entity-picker
-          label="Inner Temperature Entity"
-          .hass=${this.hass}
-          .value=${this._inner_temp_entity}
-          .configValue=${'inner_temp_entity'}
-          @value-changed=${this._valueChanged}
-          .includeDomains=${['sensor']}
-          allow-custom-entity
-        ></ha-entity-picker>
+        <div class="form-group">
+          <label for="inner_temp">Inner Temperature Entity</label>
+          <select
+            id="inner_temp"
+            @change=${(ev) => this._valueChanged('inner_temp_entity', ev.target.value)}
+          >
+            <option value="">Select entity...</option>
+            ${sensorEntities.map(entity => {
+            var _a, _b;
+            return x `
+              <option 
+                value=${entity} 
+                ?selected=${entity === this._config.inner_temp_entity}
+              >
+                ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
+              </option>
+            `;
+        })}
+          </select>
+        </div>
 
-        <ha-entity-picker
-          label="Inner Humidity Entity"
-          .hass=${this.hass}
-          .value=${this._inner_humidity_entity}
-          .configValue=${'inner_humidity_entity'}
-          @value-changed=${this._valueChanged}
-          .includeDomains=${['sensor']}
-          allow-custom-entity
-        ></ha-entity-picker>
+        <div class="form-group">
+          <label for="inner_humidity">Inner Humidity Entity</label>
+          <select
+            id="inner_humidity"
+            @change=${(ev) => this._valueChanged('inner_humidity_entity', ev.target.value)}
+          >
+            <option value="">Select entity...</option>
+            ${sensorEntities.map(entity => {
+            var _a, _b;
+            return x `
+              <option 
+                value=${entity} 
+                ?selected=${entity === this._config.inner_humidity_entity}
+              >
+                ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
+              </option>
+            `;
+        })}
+          </select>
+        </div>
 
-        <ha-entity-picker
-          label="Outer Temperature Entity"
-          .hass=${this.hass}
-          .value=${this._outer_temp_entity}
-          .configValue=${'outer_temp_entity'}
-          @value-changed=${this._valueChanged}
-          .includeDomains=${['sensor']}
-          allow-custom-entity
-        ></ha-entity-picker>
+        <div class="form-group">
+          <label for="outer_temp">Outer Temperature Entity</label>
+          <select
+            id="outer_temp"
+            @change=${(ev) => this._valueChanged('outer_temp_entity', ev.target.value)}
+          >
+            <option value="">Select entity...</option>
+            ${sensorEntities.map(entity => {
+            var _a, _b;
+            return x `
+              <option 
+                value=${entity} 
+                ?selected=${entity === this._config.outer_temp_entity}
+              >
+                ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
+              </option>
+            `;
+        })}
+          </select>
+        </div>
 
-        <ha-entity-picker
-          label="Outer Humidity Entity"
-          .hass=${this.hass}
-          .value=${this._outer_humidity_entity}
-          .configValue=${'outer_humidity_entity'}
-          @value-changed=${this._valueChanged}
-          .includeDomains=${['sensor']}
-          allow-custom-entity
-        ></ha-entity-picker>
+        <div class="form-group">
+          <label for="outer_humidity">Outer Humidity Entity</label>
+          <select
+            id="outer_humidity"
+            @change=${(ev) => this._valueChanged('outer_humidity_entity', ev.target.value)}
+          >
+            <option value="">Select entity...</option>
+            ${sensorEntities.map(entity => {
+            var _a, _b;
+            return x `
+              <option 
+                value=${entity} 
+                ?selected=${entity === this._config.outer_humidity_entity}
+              >
+                ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
+              </option>
+            `;
+        })}
+          </select>
+        </div>
 
-        <ha-entity-picker
-          label="Leaf Temperature Entity"
-          .hass=${this.hass}
-          .value=${this._leaf_temp_entity}
-          .configValue=${'leaf_temp_entity'}
-          @value-changed=${this._valueChanged}
-          .includeDomains=${['sensor']}
-          allow-custom-entity
-        ></ha-entity-picker>
+        <div class="form-group">
+          <label for="leaf_temp">Leaf Temperature Entity</label>
+          <select
+            id="leaf_temp"
+            @change=${(ev) => this._valueChanged('leaf_temp_entity', ev.target.value)}
+          >
+            <option value="">Select entity...</option>
+            ${sensorEntities.map(entity => {
+            var _a, _b;
+            return x `
+              <option 
+                value=${entity} 
+                ?selected=${entity === this._config.leaf_temp_entity}
+              >
+                ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
+              </option>
+            `;
+        })}
+          </select>
+        </div>
 
         <h3>Control Entities</h3>
 
-        <ha-entity-picker
-          label="Light Entity"
-          .hass=${this.hass}
-          .value=${this._light_entity}
-          .configValue=${'light_entity'}
-          @value-changed=${this._valueChanged}
-          .includeDomains=${['light', 'switch']}
-          allow-custom-entity
-        ></ha-entity-picker>
+        <div class="form-group">
+          <label for="light">Light Entity</label>
+          <select
+            id="light"
+            @change=${(ev) => this._valueChanged('light_entity', ev.target.value)}
+          >
+            <option value="">Select entity...</option>
+            ${lightEntities.map(entity => {
+            var _a, _b;
+            return x `
+              <option 
+                value=${entity} 
+                ?selected=${entity === this._config.light_entity}
+              >
+                ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
+              </option>
+            `;
+        })}
+          </select>
+        </div>
 
-        <ha-entity-picker
-          label="Heating Entity"
-          .hass=${this.hass}
-          .value=${this._heating_entity}
-          .configValue=${'heating_entity'}
-          @value-changed=${this._valueChanged}
-          .includeDomains=${['switch', 'climate']}
-          allow-custom-entity
-        ></ha-entity-picker>
+        <div class="form-group">
+          <label for="heating">Heating Entity</label>
+          <select
+            id="heating"
+            @change=${(ev) => this._valueChanged('heating_entity', ev.target.value)}
+          >
+            <option value="">Select entity...</option>
+            ${lightEntities.map(entity => {
+            var _a, _b;
+            return x `
+              <option 
+                value=${entity} 
+                ?selected=${entity === this._config.heating_entity}
+              >
+                ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
+              </option>
+            `;
+        })}
+          </select>
+        </div>
 
-        <ha-entity-picker
-          label="Ventilation Entity"
-          .hass=${this.hass}
-          .value=${this._ventilation_entity}
-          .configValue=${'ventilation_entity'}
-          @value-changed=${this._valueChanged}
-          .includeDomains=${['fan', 'switch']}
-          allow-custom-entity
-        ></ha-entity-picker>
+        <div class="form-group">
+          <label for="ventilation">Ventilation Entity</label>
+          <select
+            id="ventilation"
+            @change=${(ev) => this._valueChanged('ventilation_entity', ev.target.value)}
+          >
+            <option value="">Select entity...</option>
+            ${fanEntities.map(entity => {
+            var _a, _b;
+            return x `
+              <option 
+                value=${entity} 
+                ?selected=${entity === this._config.ventilation_entity}
+              >
+                ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
+              </option>
+            `;
+        })}
+          </select>
+        </div>
 
         <h3>Camera</h3>
 
-        <ha-entity-picker
-          label="Camera Entity"
-          .hass=${this.hass}
-          .value=${this._camera_entity}
-          .configValue=${'camera_entity'}
-          @value-changed=${this._valueChanged}
-          .includeDomains=${['camera']}
-          allow-custom-entity
-        ></ha-entity-picker>
-
-        <h3>Vents Configuration</h3>
-        ${this.renderVentConfiguration()}
-
-        <h3>Plants Configuration</h3>
-        ${this.renderPlantConfiguration()}
+        <div class="form-group">
+          <label for="camera">Camera Entity</label>
+          <select
+            id="camera"
+            @change=${(ev) => this._valueChanged('camera_entity', ev.target.value)}
+          >
+            <option value="">Select entity...</option>
+            ${cameraEntities.map(entity => {
+            var _a, _b;
+            return x `
+              <option 
+                value=${entity} 
+                ?selected=${entity === this._config.camera_entity}
+              >
+                ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
+              </option>
+            `;
+        })}
+          </select>
+        </div>
 
         <h3>VPD Configuration</h3>
-        <ha-formfield label="Enable VPD Calculation">
-          <ha-checkbox
-            .checked=${((_a = this._config.vpd_calculation) === null || _a === void 0 ? void 0 : _a.enabled) !== false}
-            .configValue=${'vpd_enabled'}
-            @change=${this._vpdEnabledChanged}
-          ></ha-checkbox>
-        </ha-formfield>
+        <div class="form-group">
+          <label>
+            <input
+              type="checkbox"
+              .checked=${((_a = this._config.vpd_calculation) === null || _a === void 0 ? void 0 : _a.enabled) !== false}
+              @change=${(ev) => this._vpdEnabledChanged(ev.target.checked)}
+            />
+            Enable VPD Calculation
+          </label>
+        </div>
+
+        <h3>Vents Configuration</h3>
+        ${this.renderVentConfiguration(coverEntities)}
+
+        <h3>Plants Configuration</h3>
+        ${this.renderPlantConfiguration(plantEntities)}
       </div>
     `;
     }
-    renderVentConfiguration() {
+    renderVentConfiguration(coverEntities) {
         const vents = this._config.vents || [];
         return x `
       <div class="vents-config">
         ${vents.map((vent, index) => x `
           <div class="vent-config">
-            <paper-input
-              label="Vent Name"
-              .value=${vent.name}
-              @value-changed=${(ev) => this._ventChanged(index, 'name', ev.detail.value)}
-            ></paper-input>
+            <div class="form-group">
+              <label for="vent-name-${index}">Vent Name</label>
+              <input
+                id="vent-name-${index}"
+                type="text"
+                .value=${vent.name}
+                @input=${(ev) => this._ventChanged(index, 'name', ev.target.value)}
+                placeholder="Vent Name"
+              />
+            </div>
             
-            <ha-entity-picker
-              label="Vent Entity"
-              .hass=${this.hass}
-              .value=${vent.entity}
-              @value-changed=${(ev) => this._ventChanged(index, 'entity', ev.detail.value)}
-              .includeDomains=${['cover', 'switch']}
-              allow-custom-entity
-            ></ha-entity-picker>
-
-            <paper-dropdown-menu label="Position">
-              <paper-listbox
-                slot="dropdown-content"
-                .selected=${['top', 'side', 'bottom'].indexOf(vent.position || 'side')}
-                @selected-changed=${(ev) => this._ventChanged(index, 'position', ['top', 'side', 'bottom'][ev.detail.value])}
+            <div class="form-group">
+              <label for="vent-entity-${index}">Vent Entity</label>
+              <select
+                id="vent-entity-${index}"
+                @change=${(ev) => this._ventChanged(index, 'entity', ev.target.value)}
               >
-                <paper-item>Top</paper-item>
-                <paper-item>Side</paper-item>
-                <paper-item>Bottom</paper-item>
-              </paper-listbox>
-            </paper-dropdown-menu>
+                <option value="">Select entity...</option>
+                ${coverEntities.map(entity => {
+            var _a, _b;
+            return x `
+                  <option 
+                    value=${entity} 
+                    ?selected=${entity === vent.entity}
+                  >
+                    ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
+                  </option>
+                `;
+        })}
+              </select>
+            </div>
 
-            <mwc-button @click=${() => this._removeVent(index)}>Remove Vent</mwc-button>
+            <div class="form-group">
+              <label for="vent-position-${index}">Position</label>
+              <select
+                id="vent-position-${index}"
+                @change=${(ev) => this._ventChanged(index, 'position', ev.target.value)}
+              >
+                <option value="top" ?selected=${vent.position === 'top'}>Top</option>
+                <option value="side" ?selected=${vent.position === 'side'}>Side</option>
+                <option value="bottom" ?selected=${vent.position === 'bottom'}>Bottom</option>
+              </select>
+            </div>
+
+            <button class="remove-button" @click=${() => this._removeVent(index)}>Remove Vent</button>
           </div>
         `)}
         
-        <mwc-button @click=${this._addVent}>Add Vent</mwc-button>
+        <button class="add-button" @click=${this._addVent}>Add Vent</button>
       </div>
     `;
     }
-    renderPlantConfiguration() {
+    renderPlantConfiguration(plantEntities) {
         const plants = this._config.plants || [];
         return x `
       <div class="plants-config">
         ${plants.map((plant, index) => x `
           <div class="plant-config">
-            <paper-input
-              label="Plant Name"
-              .value=${plant.name}
-              @value-changed=${(ev) => this._plantChanged(index, 'name', ev.detail.value)}
-            ></paper-input>
+            <div class="form-group">
+              <label for="plant-name-${index}">Plant Name</label>
+              <input
+                id="plant-name-${index}"
+                type="text"
+                .value=${plant.name}
+                @input=${(ev) => this._plantChanged(index, 'name', ev.target.value)}
+                placeholder="Plant Name"
+              />
+            </div>
             
-            <ha-entity-picker
-              label="Plant Entity"
-              .hass=${this.hass}
-              .value=${plant.entity}
-              @value-changed=${(ev) => this._plantChanged(index, 'entity', ev.detail.value)}
-              .includeDomains=${['plant', 'sensor']}
-              allow-custom-entity
-            ></ha-entity-picker>
+            <div class="form-group">
+              <label for="plant-entity-${index}">Plant Entity</label>
+              <select
+                id="plant-entity-${index}"
+                @change=${(ev) => this._plantChanged(index, 'entity', ev.target.value)}
+              >
+                <option value="">Select entity...</option>
+                ${plantEntities.map(entity => {
+            var _a, _b;
+            return x `
+                  <option 
+                    value=${entity} 
+                    ?selected=${entity === plant.entity}
+                  >
+                    ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
+                  </option>
+                `;
+        })}
+              </select>
+            </div>
 
-            <paper-input
-              label="Position (1-4)"
-              type="number"
-              min="1"
-              max="4"
-              .value=${plant.position || 1}
-              @value-changed=${(ev) => this._plantChanged(index, 'position', parseInt(ev.detail.value))}
-            ></paper-input>
+            <div class="form-group">
+              <label for="plant-position-${index}">Position (1-4)</label>
+              <input
+                id="plant-position-${index}"
+                type="number"
+                min="1"
+                max="4"
+                .value=${plant.position || 1}
+                @input=${(ev) => this._plantChanged(index, 'position', parseInt(ev.target.value))}
+              />
+            </div>
 
-            <mwc-button @click=${() => this._removePlant(index)}>Remove Plant</mwc-button>
+            <button class="remove-button" @click=${() => this._removePlant(index)}>Remove Plant</button>
           </div>
         `)}
         
-        <mwc-button @click=${this._addPlant}>Add Plant</mwc-button>
+        <button class="add-button" @click=${this._addPlant}>Add Plant</button>
       </div>
     `;
     }
-    _valueChanged(ev) {
+    _valueChanged(configValue, value) {
         if (!this._config || !this.hass) {
             return;
         }
-        const target = ev.target;
-        const configValue = target.configValue;
-        const value = target.value;
-        if (this[`_${configValue}`] === value) {
+        if (this._config[configValue] === value) {
             return;
         }
-        const newConfig = Object.assign(Object.assign({}, this._config), { [configValue]: value });
+        const newConfig = Object.assign(Object.assign({}, this._config), { [configValue]: value || undefined });
         ne(this, 'config-changed', { config: newConfig });
     }
-    _vpdEnabledChanged(ev) {
-        const value = ev.target.checked;
-        const newConfig = Object.assign(Object.assign({}, this._config), { vpd_calculation: Object.assign(Object.assign({}, this._config.vpd_calculation), { enabled: value }) });
+    _vpdEnabledChanged(enabled) {
+        const newConfig = Object.assign(Object.assign({}, this._config), { vpd_calculation: Object.assign(Object.assign({}, this._config.vpd_calculation), { enabled }) });
         ne(this, 'config-changed', { config: newConfig });
     }
     _ventChanged(index, field, value) {
@@ -1000,14 +1107,50 @@ let GrowBoxCardEditor = class GrowBoxCardEditor extends i {
       .card-config {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 16px;
+        padding: 16px;
       }
 
       h3 {
-        margin: 16px 0 8px 0;
+        margin: 20px 0 12px 0;
         color: var(--primary-color);
         border-bottom: 1px solid var(--divider-color);
         padding-bottom: 4px;
+        font-size: 16px;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 12px;
+      }
+
+      label {
+        font-weight: 500;
+        color: var(--primary-text-color);
+        font-size: 14px;
+      }
+
+      input, select {
+        padding: 8px 12px;
+        border: 1px solid var(--divider-color);
+        border-radius: 4px;
+        background: var(--card-background-color);
+        color: var(--primary-text-color);
+        font-size: 14px;
+        font-family: inherit;
+      }
+
+      input:focus, select:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 1px var(--primary-color);
+      }
+
+      input[type="checkbox"] {
+        width: auto;
+        margin-right: 8px;
       }
 
       .vents-config,
@@ -1023,24 +1166,39 @@ let GrowBoxCardEditor = class GrowBoxCardEditor extends i {
         border: 1px solid var(--divider-color);
         border-radius: 8px;
         background: var(--card-background-color);
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
+        position: relative;
       }
 
-      paper-input,
-      ha-entity-picker,
-      paper-dropdown-menu {
-        width: 100%;
-      }
-
-      mwc-button {
+      .add-button,
+      .remove-button {
+        padding: 8px 16px;
+        border: 1px solid var(--primary-color);
+        border-radius: 4px;
+        background: var(--primary-color);
+        color: white;
+        cursor: pointer;
+        font-size: 14px;
         margin-top: 8px;
-        align-self: flex-start;
       }
 
-      ha-formfield {
-        margin: 8px 0;
+      .remove-button {
+        background: #f44336;
+        border-color: #f44336;
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        padding: 4px 8px;
+        font-size: 12px;
+      }
+
+      .add-button:hover,
+      .remove-button:hover {
+        opacity: 0.9;
+      }
+
+      select option {
+        background: var(--card-background-color);
+        color: var(--primary-text-color);
       }
     `;
     }
