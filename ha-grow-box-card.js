@@ -73,6 +73,11 @@ const t$1=t=>(e,o)=>{void 0!==o?o.addInitializer((()=>{customElements.define(t,e
  */function r$1(r){return n({...r,state:!0,attribute:!1})}
 
 let HaGrowBoxCard = class HaGrowBoxCard extends i {
+    constructor() {
+        super(...arguments);
+        this.plantInfoCache = new Map();
+        this.plantDataCache = new Map();
+    }
     static async getConfigElement() {
         await Promise.resolve().then(function () { return editor; });
         return document.createElement('ha-grow-box-card-editor');
@@ -98,6 +103,44 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             throw new Error('Invalid configuration');
         }
         this.config = config;
+        // Clear caches when config changes
+        this.plantInfoCache.clear();
+        this.plantDataCache.clear();
+    }
+    async updated(changedProperties) {
+        super.updated(changedProperties);
+        if (changedProperties.has('hass') || changedProperties.has('config')) {
+            await this.preloadPlantData();
+        }
+    }
+    async preloadPlantData() {
+        var _a;
+        if (!((_a = this.config) === null || _a === void 0 ? void 0 : _a.plants) || !this.hass)
+            return;
+        for (const plant of this.config.plants) {
+            if (plant.entity && !this.plantDataCache.has(plant.entity)) {
+                const plantEntity = this.hass.states[plant.entity];
+                if (plantEntity) {
+                    try {
+                        const healthData = await this.calculatePlantHealth(plantEntity);
+                        const plantData = {
+                            moisture: await this.getPlantSensorValue(plantEntity, 'moisture'),
+                            light: await this.getPlantSensorValue(plantEntity, 'illuminance'),
+                            temp: await this.getPlantSensorValue(plantEntity, 'temperature'),
+                            ec: await this.getPlantSensorValue(plantEntity, 'conductivity'),
+                            health: healthData.health,
+                            status: healthData.status,
+                            healthColor: healthData.color
+                        };
+                        this.plantDataCache.set(plant.entity, plantData);
+                        this.requestUpdate(); // Trigger re-render with new data
+                    }
+                    catch (error) {
+                        console.error(`Error preloading data for plant ${plant.entity}:`, error);
+                    }
+                }
+            }
+        }
     }
     getCardSize() {
         return 8;
@@ -206,12 +249,109 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         }
         return 'AUS';
     }
-    getPlantSensorValue(plantEntity, sensorType) {
-        var _a;
+    findPotentialSensorEntities(plantEntityId) {
+        var _a, _b;
+        if (!this.hass)
+            return;
+        console.log(`\n=== Looking for sensor entities related to ${plantEntityId} ===`);
+        // Get plant name/species for matching
+        const plantEntity = this.hass.states[plantEntityId];
+        ((_b = (_a = plantEntity === null || plantEntity === void 0 ? void 0 : plantEntity.attributes) === null || _a === void 0 ? void 0 : _a.species) === null || _b === void 0 ? void 0 : _b.toLowerCase()) || '';
+        const plantName = plantEntityId.replace('plant.', '').toLowerCase();
+        // Search for related sensors
+        const relatedSensors = Object.keys(this.hass.states).filter(entityId => {
+            var _a, _b;
+            if (!entityId.startsWith('sensor.'))
+                return false;
+            const entity = this.hass.states[entityId];
+            const entityLower = entityId.toLowerCase();
+            const friendlyName = ((_b = (_a = entity.attributes) === null || _a === void 0 ? void 0 : _a.friendly_name) === null || _b === void 0 ? void 0 : _b.toLowerCase()) || '';
+            // Check if sensor might be related to this plant
+            return (entityLower.includes(plantName) ||
+                entityLower.includes('purple') ||
+                entityLower.includes('lemonade') ||
+                entityLower.includes('cannabis') ||
+                friendlyName.includes(plantName) ||
+                friendlyName.includes('purple') ||
+                friendlyName.includes('lemonade') ||
+                // Common plant sensor types
+                (entityLower.includes('moisture') || entityLower.includes('humidity')) ||
+                (entityLower.includes('conductivity') || entityLower.includes('ec')) ||
+                (entityLower.includes('light') || entityLower.includes('illuminance')) ||
+                (entityLower.includes('temperature') && !entityLower.includes('cpu')));
+        });
+        console.log('Potential related sensor entities:');
+        relatedSensors.forEach(sensorId => {
+            var _a, _b;
+            const sensor = this.hass.states[sensorId];
+            console.log(`  ${sensorId}: ${sensor.state} ${((_a = sensor.attributes) === null || _a === void 0 ? void 0 : _a.unit_of_measurement) || ''} (${((_b = sensor.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || 'No friendly name'})`);
+        });
+        if (relatedSensors.length > 0) {
+            console.log('\n💡 To use these sensors with your plant, add this to your configuration.yaml:');
+            console.log(`plant:\n  ${plantEntityId.replace('plant.', '')}:`);
+            console.log('    sensors:');
+            relatedSensors.forEach(sensorId => {
+                var _a, _b;
+                const entityLower = sensorId.toLowerCase();
+                ((_b = (_a = this.hass.states[sensorId].attributes) === null || _a === void 0 ? void 0 : _a.friendly_name) === null || _b === void 0 ? void 0 : _b.toLowerCase()) || '';
+                if (entityLower.includes('moisture') || entityLower.includes('humidity')) {
+                    console.log(`      moisture: ${sensorId}`);
+                }
+                else if (entityLower.includes('conductivity') || entityLower.includes('ec')) {
+                    console.log(`      conductivity: ${sensorId}`);
+                }
+                else if (entityLower.includes('light') || entityLower.includes('illuminance')) {
+                    console.log(`      illuminance: ${sensorId}`);
+                }
+                else if (entityLower.includes('temperature')) {
+                    console.log(`      temperature: ${sensorId}`);
+                }
+            });
+            console.log('    min_moisture: 15');
+            console.log('    max_moisture: 60');
+            console.log('    # Add other min/max values as needed');
+        }
+        else {
+            console.log('❌ No related sensor entities found. You may need to:');
+            console.log('  1. Set up plant sensors (MiFlora, ESPHome, etc.)');
+            console.log('  2. Check if sensors have different naming patterns');
+        }
+        console.log('===============================================\n');
+    }
+    async getPlantInfo(entityId) {
+        if (this.plantInfoCache.has(entityId)) {
+            return this.plantInfoCache.get(entityId);
+        }
+        try {
+            const plantInfo = await this.hass.callWS({
+                type: "plant/get_info",
+                entity_id: entityId,
+            });
+            console.log(`🌱 Plant info for ${entityId}:`, plantInfo);
+            this.plantInfoCache.set(entityId, plantInfo);
+            return plantInfo;
+        }
+        catch (err) {
+            console.error(`Failed to get plant info for ${entityId}:`, err);
+            this.plantInfoCache.set(entityId, { result: {} });
+            return { result: {} };
+        }
+    }
+    async getPlantSensorValue(plantEntity, sensorType) {
+        var _a, _b;
         if (!plantEntity || !plantEntity.attributes)
             return 'N/A';
-        // Check for direct sensor entity references in plant attributes
-        const sensorEntityId = (_a = plantEntity.attributes.sensors) === null || _a === void 0 ? void 0 : _a[sensorType];
+        // First, try to get plant info with sensor entity references
+        const plantInfo = await this.getPlantInfo(plantEntity.entity_id);
+        if ((_a = plantInfo === null || plantInfo === void 0 ? void 0 : plantInfo.result) === null || _a === void 0 ? void 0 : _a.sensors) {
+            const sensorEntityId = plantInfo.result.sensors[sensorType];
+            if (sensorEntityId && this.hass.states[sensorEntityId]) {
+                console.log(`Found ${sensorType} sensor: ${sensorEntityId} = ${this.hass.states[sensorEntityId].state}`);
+                return this.hass.states[sensorEntityId].state;
+            }
+        }
+        // Check for direct sensor entity references in plant attributes (fallback)
+        const sensorEntityId = (_b = plantEntity.attributes.sensors) === null || _b === void 0 ? void 0 : _b[sensorType];
         if (sensorEntityId && this.hass.states[sensorEntityId]) {
             return this.hass.states[sensorEntityId].state;
         }
@@ -251,11 +391,49 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         const statusKey = `${sensorType}_status`;
         const status = plantEntity.attributes[statusKey];
         if (status) {
-            return `Status: ${status}`;
+            console.log(`Using status for ${sensorType}: ${status}`);
+            return status === 'ok' ? 'OK' : status;
+        }
+        console.log(`No data found for ${sensorType} in plant ${plantEntity.entity_id}`);
+        return 'N/A';
+    }
+    getPlantSensorValueSync(plantEntity, sensorType) {
+        var _a;
+        if (!plantEntity || !plantEntity.attributes)
+            return 'N/A';
+        // Check for direct sensor entity references in plant attributes
+        const sensorEntityId = (_a = plantEntity.attributes.sensors) === null || _a === void 0 ? void 0 : _a[sensorType];
+        if (sensorEntityId && this.hass.states[sensorEntityId]) {
+            return this.hass.states[sensorEntityId].state;
+        }
+        // Check for direct attribute values (common in Home Assistant plant entities)
+        const directValue = plantEntity.attributes[sensorType];
+        if (directValue !== undefined && directValue !== null) {
+            return directValue.toString();
+        }
+        // Check for sensor data in different attribute names
+        const alternativeNames = {
+            'moisture': ['soil_moisture', 'moisture_level', 'humidity', 'moisture'],
+            'illuminance': ['light_intensity', 'light', 'brightness', 'illuminance'],
+            'temperature': ['temp', 'temperature'],
+            'conductivity': ['electrical_conductivity', 'ec', 'conductivity', 'fertility']
+        };
+        const alternatives = alternativeNames[sensorType] || [];
+        for (const altName of alternatives) {
+            const altValue = plantEntity.attributes[altName];
+            if (altValue !== undefined && altValue !== null) {
+                return altValue.toString();
+            }
+        }
+        // If plant has status but no values, show the status
+        const statusKey = `${sensorType}_status`;
+        const status = plantEntity.attributes[statusKey];
+        if (status) {
+            return status === 'ok' ? 'OK' : status;
         }
         return 'N/A';
     }
-    calculatePlantHealth(plantEntity) {
+    async calculatePlantHealth(plantEntity) {
         if (!plantEntity) {
             return { health: 0, status: 'Unbekannt', color: '#666' };
         }
@@ -270,8 +448,9 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         // Calculate health based on individual sensor readings
         let healthScore = 100;
         const sensors = ['moisture', 'conductivity', 'illuminance', 'temperature'];
-        sensors.forEach(sensor => {
-            const value = parseFloat(this.getPlantSensorValue(plantEntity, sensor));
+        for (const sensor of sensors) {
+            const valueStr = await this.getPlantSensorValue(plantEntity, sensor);
+            const value = parseFloat(valueStr);
             const min = plantEntity.attributes[`min_${sensor}`];
             const max = plantEntity.attributes[`max_${sensor}`];
             if (!isNaN(value) && min !== undefined && max !== undefined) {
@@ -279,7 +458,7 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
                     healthScore -= 20;
                 }
             }
-        });
+        }
         // Determine status and color based on health score
         if (healthScore >= 80) {
             return { health: healthScore, status: 'Gesund', color: '#4caf50' };
@@ -322,22 +501,32 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             if (plant === null || plant === void 0 ? void 0 : plant.entity) {
                 const plantEntity = this.hass.states[plant.entity];
                 if (plantEntity) {
-                    // Debug: Log plant entity data to console
-                    console.log(`Plant ${plant.entity} found:`, plantEntity);
-                    console.log(`Plant attributes:`, plantEntity.attributes);
-                    console.log('All plant attribute keys:', Object.keys(plantEntity.attributes));
-                    const healthData = this.calculatePlantHealth(plantEntity);
-                    plantData = {
-                        moisture: this.getPlantSensorValue(plantEntity, 'moisture'),
-                        light: this.getPlantSensorValue(plantEntity, 'illuminance'),
-                        temp: this.getPlantSensorValue(plantEntity, 'temperature'),
-                        ec: this.getPlantSensorValue(plantEntity, 'conductivity'),
-                        health: healthData.health,
-                        status: healthData.status,
-                        healthColor: healthData.color
-                    };
-                    // Debug: Log retrieved values
-                    console.log(`Plant ${plant.entity} sensor values:`, plantData);
+                    // Use cached data if available, otherwise use fallback
+                    const cachedData = this.plantDataCache.get(plant.entity);
+                    if (cachedData) {
+                        plantData = cachedData;
+                        console.log(`Using cached data for plant ${plant.entity}:`, plantData);
+                    }
+                    else {
+                        // Fallback to synchronous data extraction
+                        console.log(`Plant ${plant.entity} found (using fallback):`, plantEntity);
+                        console.log(`Plant attributes:`, plantEntity.attributes);
+                        console.log('All plant attribute keys:', Object.keys(plantEntity.attributes));
+                        console.log('Full plant attributes object:', JSON.stringify(plantEntity.attributes, null, 2));
+                        // Help find related sensor entities
+                        this.findPotentialSensorEntities(plant.entity);
+                        // Use synchronous fallback for plant data
+                        plantData = {
+                            moisture: this.getPlantSensorValueSync(plantEntity, 'moisture'),
+                            light: this.getPlantSensorValueSync(plantEntity, 'illuminance'),
+                            temp: this.getPlantSensorValueSync(plantEntity, 'temperature'),
+                            ec: this.getPlantSensorValueSync(plantEntity, 'conductivity'),
+                            health: plantEntity.state === 'ok' ? 85 : plantEntity.state === 'problem' ? 30 : 50,
+                            status: plantEntity.state === 'ok' ? 'Gesund' : plantEntity.state === 'problem' ? 'Problem' : 'Unbekannt',
+                            healthColor: plantEntity.state === 'ok' ? '#4caf50' : plantEntity.state === 'problem' ? '#f44336' : '#666'
+                        };
+                        console.log(`Plant ${plant.entity} sensor values (fallback):`, plantData);
+                    }
                 }
                 else {
                     // Entity exists but not found in states
@@ -516,6 +705,12 @@ __decorate([
 __decorate([
     r$1()
 ], HaGrowBoxCard.prototype, "config", void 0);
+__decorate([
+    r$1()
+], HaGrowBoxCard.prototype, "plantInfoCache", void 0);
+__decorate([
+    r$1()
+], HaGrowBoxCard.prototype, "plantDataCache", void 0);
 HaGrowBoxCard = __decorate([
     t$1('ha-grow-box-card')
 ], HaGrowBoxCard);
