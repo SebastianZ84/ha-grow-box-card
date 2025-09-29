@@ -222,7 +222,7 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         }
         // Check for sensor data in different attribute names
         const alternativeNames = {
-            'moisture': ['soil_moisture', 'moisture_level', 'humidity'],
+            'moisture': ['soil_moisture', 'moisture_level', 'humidity', 'moisture'],
             'illuminance': ['light_intensity', 'light', 'brightness', 'illuminance'],
             'temperature': ['temp', 'temperature'],
             'conductivity': ['electrical_conductivity', 'ec', 'conductivity', 'fertility']
@@ -233,6 +233,25 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             if (altValue !== undefined && altValue !== null) {
                 return altValue.toString();
             }
+        }
+        // Check if this plant has sensor entities defined but we need to fetch their values
+        // Look for sensor IDs in plant attributes like sensor.moisture_sensor_id
+        const possibleSensorKeys = Object.keys(plantEntity.attributes).filter(key => key.includes(sensorType) ||
+            key.includes('sensor') ||
+            (sensorType === 'illuminance' && (key.includes('light') || key.includes('brightness'))) ||
+            (sensorType === 'conductivity' && (key.includes('ec') || key.includes('fertility'))));
+        for (const key of possibleSensorKeys) {
+            const sensorId = plantEntity.attributes[key];
+            if (typeof sensorId === 'string' && sensorId.startsWith('sensor.') && this.hass.states[sensorId]) {
+                console.log(`Found sensor ${sensorId} for ${sensorType} via key ${key}`);
+                return this.hass.states[sensorId].state;
+            }
+        }
+        // If plant has status but no values, show the status
+        const statusKey = `${sensorType}_status`;
+        const status = plantEntity.attributes[statusKey];
+        if (status) {
+            return `Status: ${status}`;
         }
         return 'N/A';
     }
@@ -306,6 +325,7 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
                     // Debug: Log plant entity data to console
                     console.log(`Plant ${plant.entity} found:`, plantEntity);
                     console.log(`Plant attributes:`, plantEntity.attributes);
+                    console.log('All plant attribute keys:', Object.keys(plantEntity.attributes));
                     const healthData = this.calculatePlantHealth(plantEntity);
                     plantData = {
                         moisture: this.getPlantSensorValue(plantEntity, 'moisture'),
