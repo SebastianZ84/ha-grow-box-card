@@ -316,6 +316,55 @@ export class GrowBoxCard extends LitElement {
     `;
   }
 
+  private isEntityOn(entityId: string | undefined): boolean {
+    if (!entityId || !this.hass.states[entityId]) {
+      return false;
+    }
+    const entity = this.hass.states[entityId];
+    return ['on', 'open', 'home'].includes(entity.state.toLowerCase());
+  }
+
+  private renderPlantsSimple() {
+    if (!this.config.plants?.length) {
+      return html`
+        <div class="plant-positions">
+          <div class="plant-pot empty" style="--position: 1;"><span>1</span></div>
+          <div class="plant-pot empty" style="--position: 2;"><span>2</span></div>
+          <div class="plant-pot empty" style="--position: 3;"><span>3</span></div>
+          <div class="plant-pot empty" style="--position: 4;"><span>4</span></div>
+        </div>
+      `;
+    }
+
+    const plantsByPosition = new Map();
+    this.config.plants.forEach(plant => {
+      plantsByPosition.set(plant.position || 1, plant);
+    });
+
+    return html`
+      <div class="plant-positions">
+        ${[1, 2, 3, 4].map(position => {
+          const plant = plantsByPosition.get(position);
+          if (!plant) {
+            return html`<div class="plant-pot empty" style="--position: ${position};"><span>${position}</span></div>`;
+          }
+          
+          const state = this.hass.states[plant.entity];
+          const isHealthy = state && state.state === 'ok';
+          
+          return html`
+            <div class="plant-pot ${isHealthy ? 'healthy' : 'attention'}" 
+                 style="--position: ${position};" 
+                 title="${plant.name}">
+              <div class="plant-icon">🌱</div>
+              <span>${position}</span>
+            </div>
+          `;
+        })}
+      </div>
+    `;
+  }
+
   protected render() {
     if (!this.config || !this.hass) {
       return html``;
@@ -328,53 +377,90 @@ export class GrowBoxCard extends LitElement {
             <!-- Main Tent Structure -->
             <div class="tent-container">
               <div class="tent-frame">
+                <!-- Background tent visualization -->
+                <div class="tent-background"></div>
                 
-                <!-- Top Components -->
-                <div class="component-group top">
-                  ${this.renderComponent('extractor', 'Extractor', this.config.ventilation_entity, 1, 'top-left')}
-                  ${this.renderComponent('filter', 'Carbon Filter', null, 2, 'top-center')}
-                  ${this.renderComponent('thermo', 'Temp/Humidity', this.config.inner_temp_entity, 9, 'top-right')}
-                </div>
-
-                <!-- Reflector and Light -->
-                <div class="reflector-assembly">
-                  <div class="reflector">
-                    <div class="component-number">3</div>
-                    <div class="reflector-body">
-                      ${this.renderComponent('light-bulb', 'Growth Light', this.config.light_entity, 4, 'light-position')}
-                    </div>
+                <!-- Component positions -->
+                <div class="component extractor-pos" title="Extractor">
+                  <div class="component-circle red">
+                    <div class="component-number">1</div>
+                    <div class="component-icon">🌪️</div>
                   </div>
-                  <div class="light-beam"></div>
                 </div>
 
-                <!-- Side Components -->
-                <div class="component-group left">
-                  ${this.renderComponent('ballast', 'Ballast', this.config.heating_entity, 5, 'left-side')}
+                <div class="component filter-pos" title="Carbon Filter">
+                  <div class="component-circle gray">
+                    <div class="component-number">2</div>
+                    <div class="component-icon">🔰</div>
+                  </div>
                 </div>
 
-                <div class="component-group right">
-                  ${this.renderComponent('thermostat', 'Thermostat', null, 8, 'right-side')}
-                  ${this.renderComponent('fan', 'Ventilator', null, 7, 'right-bottom')}
+                <div class="component thermo-pos" title="Temperature/Humidity">
+                  <div class="component-circle blue">
+                    <div class="component-number">9</div>
+                    <div class="component-icon">🌡️</div>
+                  </div>
                 </div>
 
-                <!-- Bottom Components -->
-                <div class="component-group bottom">
-                  ${this.renderComponent('intake', 'Intake Fan', null, 6, 'bottom-right')}
+                <!-- Reflector and Light Assembly -->
+                <div class="reflector-system">
+                  <div class="reflector-hood">
+                    <div class="component-number">3</div>
+                    <span class="reflector-label">Reflector</span>
+                  </div>
+                  <div class="growth-light ${this.isEntityOn(this.config.light_entity) ? 'active' : 'inactive'}" 
+                       @click=${this.config.light_entity ? () => this.toggleEntity(this.config.light_entity!) : null}>
+                    <div class="component-number">4</div>
+                    <div class="light-icon">💡</div>
+                  </div>
+                  <div class="light-beam ${this.isEntityOn(this.config.light_entity) ? 'active' : 'inactive'}"></div>
                 </div>
 
-                <!-- Plants Area -->
+                <!-- Side components -->
+                <div class="component ballast-pos" title="Ballast/Heating">
+                  <div class="component-circle ${this.isEntityOn(this.config.heating_entity) ? 'green' : 'red'}"
+                       @click=${this.config.heating_entity ? () => this.toggleEntity(this.config.heating_entity!) : null}>
+                    <div class="component-number">5</div>
+                    <div class="component-icon">⚡</div>
+                  </div>
+                </div>
+
+                <div class="component intake-pos" title="Intake Fan">
+                  <div class="component-circle blue">
+                    <div class="component-number">6</div>
+                    <div class="component-icon">🌬️</div>
+                  </div>
+                </div>
+
+                <div class="component ventilator-pos" title="Ventilator">
+                  <div class="component-circle gray">
+                    <div class="component-number">7</div>
+                    <div class="component-icon">🌀</div>
+                  </div>
+                </div>
+
+                <div class="component thermostat-pos" title="Thermostat">
+                  <div class="component-circle gray">
+                    <div class="component-number">8</div>
+                    <div class="component-icon">🎛️</div>
+                  </div>
+                </div>
+
+                <!-- Plants area -->
                 <div class="plants-area">
-                  ${this.renderPlants()}
+                  ${this.renderPlantsSimple()}
                 </div>
 
-                <!-- Camera if configured -->
+                <!-- Camera overlay if configured -->
                 ${this.config.camera_entity ? html`
-                  <div class="camera-view">
-                    <ha-camera-stream
-                      .hass=${this.hass}
-                      .stateObj=${this.hass.states[this.config.camera_entity]}
-                      allow-exoplayer
-                    ></ha-camera-stream>
+                  <div class="camera-overlay">
+                    <div class="camera-feed">
+                      <ha-camera-stream
+                        .hass=${this.hass}
+                        .stateObj=${this.hass.states[this.config.camera_entity]}
+                        allow-exoplayer
+                      ></ha-camera-stream>
+                    </div>
                   </div>
                 ` : ''}
               </div>
@@ -484,86 +570,60 @@ export class GrowBoxCard extends LitElement {
         padding: 20px;
         box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         position: relative;
-        overflow: hidden;
+        overflow: visible;
       }
 
       .tent-frame {
         position: relative;
         width: 100%;
-        height: 100%;
-        min-height: 450px;
-        background: linear-gradient(to bottom, #e8e8e8 0%, #d0d0d0 100%);
+        height: 450px;
         border: 4px solid #333;
         border-radius: 8px;
-        box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+        overflow: visible;
+        background: #f0f0f0;
       }
 
-      /* Component Groups */
-      .component-group {
+      .tent-background {
         position: absolute;
-        display: flex;
-        gap: 10px;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(to bottom, #e8e8e8 0%, #d0d0d0 100%);
+        border-radius: 4px;
+        box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
       }
 
-      .component-group.top {
-        top: -30px;
-        left: 20px;
-        right: 20px;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      .component-group.left {
-        left: -30px;
-        top: 50%;
-        transform: translateY(-50%);
-        flex-direction: column;
-      }
-
-      .component-group.right {
-        right: -30px;
-        top: 40%;
-        transform: translateY(-50%);
-        flex-direction: column;
-      }
-
-      .component-group.bottom {
-        bottom: -30px;
-        right: 60px;
-      }
-
-      /* Components */
+      /* Component Positioning */
       .component {
-        position: relative;
+        position: absolute;
+        z-index: 10;
+      }
+
+      .component-circle {
         width: 50px;
         height: 50px;
         border-radius: 50%;
-        background: linear-gradient(145deg, #f0f0f0, #d0d0d0);
-        border: 2px solid #666;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
+        border: 2px solid #333;
         cursor: pointer;
         transition: all 0.3s ease;
         box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        position: relative;
       }
 
-      .component.clickable:hover {
+      .component-circle:hover {
         transform: scale(1.1);
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
       }
 
-      .component.active {
-        background: linear-gradient(145deg, #4caf50, #45a049);
-        border-color: #2e7d32;
-        color: white;
-      }
-
-      .component.inactive {
-        background: linear-gradient(145deg, #f44336, #d32f2f);
-        border-color: #c62828;
-        color: white;
-      }
+      .component-circle.red { background: linear-gradient(145deg, #f44336, #d32f2f); color: white; }
+      .component-circle.green { background: linear-gradient(145deg, #4caf50, #45a049); color: white; }
+      .component-circle.blue { background: linear-gradient(145deg, #2196f3, #1976d2); color: white; }
+      .component-circle.gray { background: linear-gradient(145deg, #9e9e9e, #757575); color: white; }
 
       .component-number {
         position: absolute;
@@ -583,47 +643,76 @@ export class GrowBoxCard extends LitElement {
         box-shadow: 0 2px 4px rgba(0,0,0,0.3);
       }
 
-      /* Component Icons */
       .component-icon {
-        font-size: 20px;
+        font-size: 18px;
+        margin-bottom: 2px;
       }
 
-      .component-icon.extractor::before { content: '🌪️'; }
-      .component-icon.filter::before { content: '🔰'; }
-      .component-icon.thermo::before { content: '🌡️'; }
-      .component-icon.light-bulb::before { content: '💡'; }
-      .component-icon.ballast::before { content: '⚡'; }
-      .component-icon.intake::before { content: '🌬️'; }
-      .component-icon.fan::before { content: '🌀'; }
-      .component-icon.thermostat::before { content: '🎛️'; }
+      /* Specific Component Positions */
+      .extractor-pos { top: -25px; left: 20px; }
+      .filter-pos { top: -25px; left: 50%; transform: translateX(-50%); }
+      .thermo-pos { top: -25px; right: 20px; }
+      .ballast-pos { left: -25px; top: 50%; transform: translateY(-50%); }
+      .intake-pos { bottom: -25px; right: 80px; }
+      .ventilator-pos { right: -25px; top: 45%; }
+      .thermostat-pos { right: -25px; top: 60%; }
 
-      /* Reflector Assembly */
-      .reflector-assembly {
+      /* Reflector System */
+      .reflector-system {
         position: absolute;
         top: 60px;
         left: 50%;
         transform: translateX(-50%);
-        width: 200px;
-        height: 80px;
+        z-index: 5;
       }
 
-      .reflector {
-        position: relative;
-        width: 100%;
-        height: 40px;
+      .reflector-hood {
+        width: 180px;
+        height: 30px;
         background: linear-gradient(145deg, #e0e0e0, #c0c0c0);
         border: 2px solid #888;
-        border-radius: 20px 20px 5px 5px;
+        border-radius: 15px 15px 5px 5px;
         display: flex;
         align-items: center;
         justify-content: center;
         box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        position: relative;
+        margin-bottom: 10px;
       }
 
-      .reflector-body {
+      .reflector-label {
+        font-size: 12px;
+        font-weight: bold;
+        color: #333;
+      }
+
+      .growth-light {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
+        margin: 0 auto;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+      }
+
+      .growth-light.active {
+        background: linear-gradient(145deg, #ffeb3b, #ffc107);
+        border: 2px solid #ff9800;
+        box-shadow: 0 0 20px rgba(255, 235, 59, 0.6);
+      }
+
+      .growth-light.inactive {
+        background: linear-gradient(145deg, #9e9e9e, #757575);
+        border: 2px solid #616161;
+      }
+
+      .light-icon {
+        font-size: 20px;
       }
 
       .light-beam {
@@ -633,24 +722,32 @@ export class GrowBoxCard extends LitElement {
         transform: translateX(-50%);
         width: 0;
         height: 0;
-        border-left: 80px solid transparent;
-        border-right: 80px solid transparent;
-        border-top: 100px solid rgba(255, 255, 0, 0.3);
+        border-left: 70px solid transparent;
+        border-right: 70px solid transparent;
+        transition: all 0.3s ease;
         z-index: 1;
+      }
+
+      .light-beam.active {
+        border-top: 120px solid rgba(255, 255, 0, 0.4);
+      }
+
+      .light-beam.inactive {
+        border-top: 120px solid rgba(200, 200, 200, 0.2);
       }
 
       /* Plants Area */
       .plants-area {
         position: absolute;
-        bottom: 20px;
+        bottom: 30px;
         left: 50%;
         transform: translateX(-50%);
-        z-index: 2;
+        z-index: 3;
       }
 
-      .plant-pots {
+      .plant-positions {
         display: flex;
-        gap: 15px;
+        gap: 20px;
         align-items: end;
       }
 
@@ -658,94 +755,56 @@ export class GrowBoxCard extends LitElement {
         display: flex;
         flex-direction: column;
         align-items: center;
+        width: 35px;
+        height: 40px;
+        background: linear-gradient(145deg, #8d6e63, #6d4c41);
+        border-radius: 0 0 18px 18px;
+        border: 2px solid #5d4037;
+        position: relative;
         cursor: pointer;
         transition: all 0.3s ease;
+        justify-content: center;
       }
 
       .plant-pot:hover {
-        transform: translateY(-2px);
+        transform: translateY(-3px);
       }
 
-      .plant-visual {
-        position: relative;
-        margin-bottom: 5px;
+      .plant-pot.empty {
+        background: linear-gradient(145deg, #bdbdbd, #9e9e9e);
+        border-color: #757575;
       }
 
-      .plant-leaves {
-        width: 30px;
-        height: 30px;
-        border-radius: 50% 0;
-        transform: rotate(-45deg);
-        margin-bottom: -10px;
-        z-index: 1;
-        position: relative;
+      .plant-pot.healthy {
+        border-color: #4caf50;
+        box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
       }
 
-      .plant-leaves.green {
-        background: linear-gradient(45deg, #4caf50, #66bb6a);
-        box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+      .plant-pot.attention {
+        border-color: #ff9800;
+        box-shadow: 0 0 10px rgba(255, 152, 0, 0.3);
       }
 
-      .plant-leaves.yellow {
-        background: linear-gradient(45deg, #ffc107, #ffeb3b);
-        box-shadow: 0 2px 4px rgba(255, 193, 7, 0.3);
+      .plant-icon {
+        font-size: 16px;
+        margin-bottom: 2px;
       }
 
-      .plant-stem {
-        width: 4px;
-        height: 20px;
-        background: #8bc34a;
-        margin: 0 auto;
-        border-radius: 2px;
-      }
-
-      .pot-base {
-        width: 40px;
-        height: 30px;
-        background: linear-gradient(145deg, #8d6e63, #6d4c41);
-        border-radius: 0 0 20px 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        position: relative;
-      }
-
-      .pot-number {
+      .plant-pot span {
         color: white;
-        font-size: 12px;
+        font-size: 10px;
         font-weight: bold;
       }
 
-      .plant-name {
-        font-size: 10px;
-        margin-top: 4px;
-        text-align: center;
-        color: var(--primary-text-color);
-        font-weight: 500;
-      }
-
-      .plant-pot.empty .pot-base {
-        background: linear-gradient(145deg, #bdbdbd, #9e9e9e);
-      }
-
-      .plant-pot.healthy .pot-base {
-        border: 2px solid #4caf50;
-      }
-
-      .plant-pot.attention .pot-base {
-        border: 2px solid #ff9800;
-      }
-
-      .plant-pot.unavailable .pot-base {
-        border: 2px solid #f44336;
-      }
-
-      /* Camera View */
-      .camera-view {
+      /* Camera Overlay */
+      .camera-overlay {
         position: absolute;
-        top: 20px;
-        right: 20px;
+        top: 15px;
+        right: 15px;
+        z-index: 15;
+      }
+
+      .camera-feed {
         width: 120px;
         height: 90px;
         border-radius: 8px;
@@ -915,24 +974,29 @@ export class GrowBoxCard extends LitElement {
           gap: 16px;
         }
         
-        .tent-container {
-          min-height: 350px;
+        .tent-frame {
+          height: 350px;
         }
 
-        .component {
+        .component-circle {
           width: 40px;
           height: 40px;
         }
 
-        .reflector-assembly {
-          width: 150px;
-          height: 60px;
+        .reflector-hood {
+          width: 140px;
+          height: 25px;
         }
 
-        .light-beam {
-          border-left-width: 60px;
-          border-right-width: 60px;
-          border-top-width: 80px;
+        .light-beam.active,
+        .light-beam.inactive {
+          border-left-width: 50px;
+          border-right-width: 50px;
+          border-top-width: 90px;
+        }
+
+        .plant-positions {
+          gap: 15px;
         }
 
         .env-grid {
