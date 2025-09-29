@@ -1,0 +1,38 @@
+{
+  "name": "ha-grow-box-card",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A Home Assistant custom card for monitoring and controlling cannabis grow tents",
+  "main": "dist/ha-grow-box-card.js",
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "lint": "eslint src/**/*.ts",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "home-assistant",
+    "lovelace",
+    "custom-card",
+    "grow-tent",
+    "cannabis"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-typescript": "^11.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "rollup": "^3.0.0",
+    "rollup-plugin-serve": "^2.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "custom-card-helpers": "^1.9.0",
+    "lit": "^3.0.0",
+    "tslib": "^2.8.1"
+  }
+}
