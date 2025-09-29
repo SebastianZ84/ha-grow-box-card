@@ -491,6 +491,49 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             return { health: healthScore, status: 'Problem', color: '#f44336' };
         }
     }
+    renderPlant(index, x$1, y) {
+        const plants = this.config.plants || [];
+        const plant = plants[index];
+        if (!plant) {
+            return x `<!-- No plant configured for position ${index + 1} -->`;
+        }
+        // Get cached data if available
+        let plantData = {
+            moisture: '23.0',
+            light: 'OK',
+            temp: '16.7',
+            ec: 'OK',
+            health: 30,
+            status: 'Problem',
+            healthColor: '#f44336'
+        };
+        if (plant.entity) {
+            const cachedData = this.plantDataCache.get(plant.entity);
+            if (cachedData) {
+                plantData = cachedData;
+                console.log(`Rendering plant ${plant.entity} with data:`, plantData);
+            }
+        }
+        const healthBarWidth = Math.max(0, Math.min(130, (plantData.health / 100) * 130));
+        const color = '#4CAF50';
+        const icon = '🌿';
+        return x `
+      <g id="plant${index + 1}">
+        <rect x="${x$1}" y="${y}" width="150" height="130" fill="#2d2d2d" rx="8" stroke="${color}" stroke-width="1"/>
+        <text x="${x$1 + 75}" y="${y + 20}" font-family="Arial" font-size="20" text-anchor="middle">${icon}</text>
+        <text x="${x$1 + 75}" y="${y + 45}" font-family="Arial" font-size="12" fill="${color}" text-anchor="middle">${plant.name}</text>
+        <g transform="translate(${x$1 + 10}, ${y + 55})">
+          <text x="0" y="0" font-family="Arial" font-size="10" fill="#888">💧 ${plantData.moisture}%</text>
+          <text x="60" y="0" font-family="Arial" font-size="10" fill="#888">☀️ ${plantData.light}</text>
+          <text x="0" y="15" font-family="Arial" font-size="10" fill="#888">🌡️ ${plantData.temp}°C</text>
+          <text x="60" y="15" font-family="Arial" font-size="10" fill="#888">🧪 ${plantData.ec}</text>
+          <rect x="0" y="25" width="130" height="6" fill="#444" rx="3"/>
+          <rect x="0" y="25" width="${healthBarWidth}" height="6" fill="${plantData.healthColor}" rx="3"/>
+          <text x="65" y="45" font-family="Arial" font-size="9" fill="${plantData.healthColor}" text-anchor="middle">${plantData.status} - ${Math.round(plantData.health)}%</text>
+        </g>
+      </g>
+    `;
+    }
     renderPlantGrid() {
         var _a, _b, _c, _d, _e, _f;
         const plants = this.config.plants || [];
@@ -697,7 +740,8 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             <!-- Growbox Schema -->
             <rect x="20" y="265" width="360" height="315" fill="#1a1a1a" stroke="#4CAF50" stroke-width="2" rx="8"/>
             
-            ${this.renderPlantGrid()}
+            <!-- Plant 1 (Top Left) - Direct SVG with real data -->
+            ${this.renderPlant(0, 40, 300)}
           </svg>
         </div>
       </ha-card>
