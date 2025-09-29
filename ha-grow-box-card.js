@@ -122,12 +122,12 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
                 const plantEntity = this.hass.states[plant.entity];
                 if (plantEntity) {
                     try {
-                        const healthData = await this.calculatePlantHealth(plantEntity);
+                        const healthData = await this.calculatePlantHealth(plantEntity, plant);
                         const plantData = {
-                            moisture: await this.getPlantSensorValue(plantEntity, 'moisture'),
-                            light: await this.getPlantSensorValue(plantEntity, 'illuminance'),
-                            temp: await this.getPlantSensorValue(plantEntity, 'temperature'),
-                            ec: await this.getPlantSensorValue(plantEntity, 'conductivity'),
+                            moisture: await this.getPlantSensorValue(plantEntity, 'moisture', plant),
+                            light: await this.getPlantSensorValue(plantEntity, 'illuminance', plant),
+                            temp: await this.getPlantSensorValue(plantEntity, 'temperature', plant),
+                            ec: await this.getPlantSensorValue(plantEntity, 'conductivity', plant),
                             health: healthData.health,
                             status: healthData.status,
                             healthColor: healthData.color
@@ -337,11 +337,20 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             return { result: {} };
         }
     }
-    async getPlantSensorValue(plantEntity, sensorType) {
+    async getPlantSensorValue(plantEntity, sensorType, plantConfig) {
         var _a, _b;
         if (!plantEntity || !plantEntity.attributes)
             return 'N/A';
-        // First, try to get plant info with sensor entity references
+        // PRIORITY 1: Check for individual sensor entities in config (like lovelace flower card)
+        if (plantConfig) {
+            const sensorKey = `${sensorType}_sensor`;
+            const individualSensorId = plantConfig[sensorKey];
+            if (individualSensorId && this.hass.states[individualSensorId]) {
+                console.log(`Using individual ${sensorType} sensor: ${individualSensorId} = ${this.hass.states[individualSensorId].state}`);
+                return this.hass.states[individualSensorId].state;
+            }
+        }
+        // PRIORITY 2: Try to get plant info with sensor entity references
         const plantInfo = await this.getPlantInfo(plantEntity.entity_id);
         if ((_a = plantInfo === null || plantInfo === void 0 ? void 0 : plantInfo.result) === null || _a === void 0 ? void 0 : _a.sensors) {
             const sensorEntityId = plantInfo.result.sensors[sensorType];
@@ -397,11 +406,20 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         console.log(`No data found for ${sensorType} in plant ${plantEntity.entity_id}`);
         return 'N/A';
     }
-    getPlantSensorValueSync(plantEntity, sensorType) {
+    getPlantSensorValueSync(plantEntity, sensorType, plantConfig) {
         var _a;
         if (!plantEntity || !plantEntity.attributes)
             return 'N/A';
-        // Check for direct sensor entity references in plant attributes
+        // PRIORITY 1: Check for individual sensor entities in config (like lovelace flower card)
+        if (plantConfig) {
+            const sensorKey = `${sensorType}_sensor`;
+            const individualSensorId = plantConfig[sensorKey];
+            if (individualSensorId && this.hass.states[individualSensorId]) {
+                console.log(`Using individual ${sensorType} sensor: ${individualSensorId} = ${this.hass.states[individualSensorId].state}`);
+                return this.hass.states[individualSensorId].state;
+            }
+        }
+        // PRIORITY 2: Check for direct sensor entity references in plant attributes
         const sensorEntityId = (_a = plantEntity.attributes.sensors) === null || _a === void 0 ? void 0 : _a[sensorType];
         if (sensorEntityId && this.hass.states[sensorEntityId]) {
             return this.hass.states[sensorEntityId].state;
@@ -433,7 +451,7 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         }
         return 'N/A';
     }
-    async calculatePlantHealth(plantEntity) {
+    async calculatePlantHealth(plantEntity, plantConfig) {
         if (!plantEntity) {
             return { health: 0, status: 'Unbekannt', color: '#666' };
         }
@@ -449,7 +467,7 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         let healthScore = 100;
         const sensors = ['moisture', 'conductivity', 'illuminance', 'temperature'];
         for (const sensor of sensors) {
-            const valueStr = await this.getPlantSensorValue(plantEntity, sensor);
+            const valueStr = await this.getPlantSensorValue(plantEntity, sensor, plantConfig);
             const value = parseFloat(valueStr);
             const min = plantEntity.attributes[`min_${sensor}`];
             const max = plantEntity.attributes[`max_${sensor}`];
@@ -517,10 +535,10 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
                         this.findPotentialSensorEntities(plant.entity);
                         // Use synchronous fallback for plant data
                         plantData = {
-                            moisture: this.getPlantSensorValueSync(plantEntity, 'moisture'),
-                            light: this.getPlantSensorValueSync(plantEntity, 'illuminance'),
-                            temp: this.getPlantSensorValueSync(plantEntity, 'temperature'),
-                            ec: this.getPlantSensorValueSync(plantEntity, 'conductivity'),
+                            moisture: this.getPlantSensorValueSync(plantEntity, 'moisture', plant),
+                            light: this.getPlantSensorValueSync(plantEntity, 'illuminance', plant),
+                            temp: this.getPlantSensorValueSync(plantEntity, 'temperature', plant),
+                            ec: this.getPlantSensorValueSync(plantEntity, 'conductivity', plant),
                             health: plantEntity.state === 'ok' ? 85 : plantEntity.state === 'problem' ? 30 : 50,
                             status: plantEntity.state === 'ok' ? 'Gesund' : plantEntity.state === 'problem' ? 'Problem' : 'Unbekannt',
                             healthColor: plantEntity.state === 'ok' ? '#4caf50' : plantEntity.state === 'problem' ? '#f44336' : '#666'
@@ -970,7 +988,7 @@ let GrowBoxCardEditor = class GrowBoxCardEditor extends i {
         ${this.renderVentConfiguration(coverEntities)}
 
         <h3>Plants Configuration</h3>
-        ${this.renderPlantConfiguration(plantEntities)}
+        ${this.renderPlantConfiguration(plantEntities, sensorEntities)}
       </div>
     `;
     }
@@ -1032,7 +1050,7 @@ let GrowBoxCardEditor = class GrowBoxCardEditor extends i {
       </div>
     `;
     }
-    renderPlantConfiguration(plantEntities) {
+    renderPlantConfiguration(plantEntities, sensorEntities) {
         const plants = this._config.plants || [];
         return x `
       <div class="plants-config">
@@ -1080,6 +1098,113 @@ let GrowBoxCardEditor = class GrowBoxCardEditor extends i {
                 .value=${plant.position || 1}
                 @input=${(ev) => this._plantChanged(index, 'position', parseInt(ev.target.value))}
               />
+            </div>
+
+            <h4>Individual Sensors (Optional)</h4>
+            
+            <div class="form-group">
+              <label for="plant-moisture-${index}">Moisture Sensor</label>
+              <select
+                id="plant-moisture-${index}"
+                @change=${(ev) => this._plantChanged(index, 'moisture_sensor', ev.target.value)}
+              >
+                <option value="">Select sensor...</option>
+                ${sensorEntities.map(entity => {
+            var _a, _b;
+            return x `
+                  <option 
+                    value=${entity} 
+                    ?selected=${entity === plant.moisture_sensor}
+                  >
+                    ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
+                  </option>
+                `;
+        })}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="plant-temperature-${index}">Temperature Sensor</label>
+              <select
+                id="plant-temperature-${index}"
+                @change=${(ev) => this._plantChanged(index, 'temperature_sensor', ev.target.value)}
+              >
+                <option value="">Select sensor...</option>
+                ${sensorEntities.map(entity => {
+            var _a, _b;
+            return x `
+                  <option 
+                    value=${entity} 
+                    ?selected=${entity === plant.temperature_sensor}
+                  >
+                    ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
+                  </option>
+                `;
+        })}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="plant-illuminance-${index}">Light Sensor</label>
+              <select
+                id="plant-illuminance-${index}"
+                @change=${(ev) => this._plantChanged(index, 'illuminance_sensor', ev.target.value)}
+              >
+                <option value="">Select sensor...</option>
+                ${sensorEntities.map(entity => {
+            var _a, _b;
+            return x `
+                  <option 
+                    value=${entity} 
+                    ?selected=${entity === plant.illuminance_sensor}
+                  >
+                    ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
+                  </option>
+                `;
+        })}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="plant-conductivity-${index}">Conductivity Sensor</label>
+              <select
+                id="plant-conductivity-${index}"
+                @change=${(ev) => this._plantChanged(index, 'conductivity_sensor', ev.target.value)}
+              >
+                <option value="">Select sensor...</option>
+                ${sensorEntities.map(entity => {
+            var _a, _b;
+            return x `
+                  <option 
+                    value=${entity} 
+                    ?selected=${entity === plant.conductivity_sensor}
+                  >
+                    ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
+                  </option>
+                `;
+        })}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="plant-battery-${index}">Battery Sensor</label>
+              <select
+                id="plant-battery-${index}"
+                @change=${(ev) => this._plantChanged(index, 'battery_sensor', ev.target.value)}
+              >
+                <option value="">Select sensor...</option>
+                ${sensorEntities.map(entity => {
+            var _a, _b;
+            return x `
+                  <option 
+                    value=${entity} 
+                    ?selected=${entity === plant.battery_sensor}
+                  >
+                    ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
+                  </option>
+                `;
+        })}
+              </select>
             </div>
 
             <button class="remove-button" @click=${() => this._removePlant(index)}>Remove Plant</button>

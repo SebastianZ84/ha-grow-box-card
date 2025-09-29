@@ -99,12 +99,12 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         const plantEntity = this.hass.states[plant.entity];
         if (plantEntity) {
           try {
-            const healthData = await this.calculatePlantHealth(plantEntity);
+            const healthData = await this.calculatePlantHealth(plantEntity, plant);
             const plantData = {
-              moisture: await this.getPlantSensorValue(plantEntity, 'moisture'),
-              light: await this.getPlantSensorValue(plantEntity, 'illuminance'),
-              temp: await this.getPlantSensorValue(plantEntity, 'temperature'),
-              ec: await this.getPlantSensorValue(plantEntity, 'conductivity'),
+              moisture: await this.getPlantSensorValue(plantEntity, 'moisture', plant),
+              light: await this.getPlantSensorValue(plantEntity, 'illuminance', plant),
+              temp: await this.getPlantSensorValue(plantEntity, 'temperature', plant),
+              ec: await this.getPlantSensorValue(plantEntity, 'conductivity', plant),
               health: healthData.health,
               status: healthData.status,
               healthColor: healthData.color
@@ -334,10 +334,20 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     }
   }
 
-  private async getPlantSensorValue(plantEntity: any, sensorType: string): Promise<string> {
+  private async getPlantSensorValue(plantEntity: any, sensorType: string, plantConfig?: any): Promise<string> {
     if (!plantEntity || !plantEntity.attributes) return 'N/A';
     
-    // First, try to get plant info with sensor entity references
+    // PRIORITY 1: Check for individual sensor entities in config (like lovelace flower card)
+    if (plantConfig) {
+      const sensorKey = `${sensorType}_sensor`;
+      const individualSensorId = plantConfig[sensorKey];
+      if (individualSensorId && this.hass.states[individualSensorId]) {
+        console.log(`Using individual ${sensorType} sensor: ${individualSensorId} = ${this.hass.states[individualSensorId].state}`);
+        return this.hass.states[individualSensorId].state;
+      }
+    }
+    
+    // PRIORITY 2: Try to get plant info with sensor entity references
     const plantInfo = await this.getPlantInfo(plantEntity.entity_id);
     if (plantInfo?.result?.sensors) {
       const sensorEntityId = plantInfo.result.sensors[sensorType];
@@ -404,10 +414,20 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     return 'N/A';
   }
 
-  private getPlantSensorValueSync(plantEntity: any, sensorType: string): string {
+  private getPlantSensorValueSync(plantEntity: any, sensorType: string, plantConfig?: any): string {
     if (!plantEntity || !plantEntity.attributes) return 'N/A';
     
-    // Check for direct sensor entity references in plant attributes
+    // PRIORITY 1: Check for individual sensor entities in config (like lovelace flower card)
+    if (plantConfig) {
+      const sensorKey = `${sensorType}_sensor`;
+      const individualSensorId = plantConfig[sensorKey];
+      if (individualSensorId && this.hass.states[individualSensorId]) {
+        console.log(`Using individual ${sensorType} sensor: ${individualSensorId} = ${this.hass.states[individualSensorId].state}`);
+        return this.hass.states[individualSensorId].state;
+      }
+    }
+    
+    // PRIORITY 2: Check for direct sensor entity references in plant attributes
     const sensorEntityId = plantEntity.attributes.sensors?.[sensorType];
     if (sensorEntityId && this.hass.states[sensorEntityId]) {
       return this.hass.states[sensorEntityId].state;
@@ -445,7 +465,7 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     return 'N/A';
   }
 
-  private async calculatePlantHealth(plantEntity: any): Promise<{ health: number; status: string; color: string }> {
+  private async calculatePlantHealth(plantEntity: any, plantConfig?: any): Promise<{ health: number; status: string; color: string }> {
     if (!plantEntity) {
       return { health: 0, status: 'Unbekannt', color: '#666' };
     }
@@ -465,7 +485,7 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     
     const sensors = ['moisture', 'conductivity', 'illuminance', 'temperature'];
     for (const sensor of sensors) {
-      const valueStr = await this.getPlantSensorValue(plantEntity, sensor);
+      const valueStr = await this.getPlantSensorValue(plantEntity, sensor, plantConfig);
       const value = parseFloat(valueStr);
       const min = plantEntity.attributes[`min_${sensor}`];
       const max = plantEntity.attributes[`max_${sensor}`];
@@ -537,10 +557,10 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
             
             // Use synchronous fallback for plant data
             plantData = {
-              moisture: this.getPlantSensorValueSync(plantEntity, 'moisture'),
-              light: this.getPlantSensorValueSync(plantEntity, 'illuminance'),
-              temp: this.getPlantSensorValueSync(plantEntity, 'temperature'),
-              ec: this.getPlantSensorValueSync(plantEntity, 'conductivity'),
+              moisture: this.getPlantSensorValueSync(plantEntity, 'moisture', plant),
+              light: this.getPlantSensorValueSync(plantEntity, 'illuminance', plant),
+              temp: this.getPlantSensorValueSync(plantEntity, 'temperature', plant),
+              ec: this.getPlantSensorValueSync(plantEntity, 'conductivity', plant),
               health: plantEntity.state === 'ok' ? 85 : plantEntity.state === 'problem' ? 30 : 50,
               status: plantEntity.state === 'ok' ? 'Gesund' : plantEntity.state === 'problem' ? 'Problem' : 'Unbekannt',
               healthColor: plantEntity.state === 'ok' ? '#4caf50' : plantEntity.state === 'problem' ? '#f44336' : '#666'

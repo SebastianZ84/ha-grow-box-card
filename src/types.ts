@@ -45,6 +45,12 @@ export interface PlantConfig {
   entity: string;
   position?: number; // 1-4 for positioning in the tent
   image?: string;
+  // Individual sensor entities (like lovelace flower card)
+  moisture_sensor?: string;
+  temperature_sensor?: string;
+  illuminance_sensor?: string;
+  conductivity_sensor?: string;
+  battery_sensor?: string;
 }
 
 export interface VPDConfig {

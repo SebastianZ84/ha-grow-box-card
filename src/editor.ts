@@ -230,7 +230,7 @@ export class GrowBoxCardEditor extends LitElement implements LovelaceCardEditor 
         ${this.renderVentConfiguration(coverEntities)}
 
         <h3>Plants Configuration</h3>
-        ${this.renderPlantConfiguration(plantEntities)}
+        ${this.renderPlantConfiguration(plantEntities, sensorEntities)}
       </div>
     `;
   }
@@ -292,7 +292,7 @@ export class GrowBoxCardEditor extends LitElement implements LovelaceCardEditor 
     `;
   }
 
-  private renderPlantConfiguration(plantEntities: string[]) {
+  private renderPlantConfiguration(plantEntities: string[], sensorEntities: string[]) {
     const plants = this._config.plants || [];
     
     return html`
@@ -338,6 +338,98 @@ export class GrowBoxCardEditor extends LitElement implements LovelaceCardEditor 
                 .value=${plant.position || 1}
                 @input=${(ev: any) => this._plantChanged(index, 'position', parseInt(ev.target.value))}
               />
+            </div>
+
+            <h4>Individual Sensors (Optional)</h4>
+            
+            <div class="form-group">
+              <label for="plant-moisture-${index}">Moisture Sensor</label>
+              <select
+                id="plant-moisture-${index}"
+                @change=${(ev: any) => this._plantChanged(index, 'moisture_sensor', ev.target.value)}
+              >
+                <option value="">Select sensor...</option>
+                ${sensorEntities.map(entity => html`
+                  <option 
+                    value=${entity} 
+                    ?selected=${entity === plant.moisture_sensor}
+                  >
+                    ${entity} (${this.hass.states[entity]?.attributes?.friendly_name || entity})
+                  </option>
+                `)}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="plant-temperature-${index}">Temperature Sensor</label>
+              <select
+                id="plant-temperature-${index}"
+                @change=${(ev: any) => this._plantChanged(index, 'temperature_sensor', ev.target.value)}
+              >
+                <option value="">Select sensor...</option>
+                ${sensorEntities.map(entity => html`
+                  <option 
+                    value=${entity} 
+                    ?selected=${entity === plant.temperature_sensor}
+                  >
+                    ${entity} (${this.hass.states[entity]?.attributes?.friendly_name || entity})
+                  </option>
+                `)}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="plant-illuminance-${index}">Light Sensor</label>
+              <select
+                id="plant-illuminance-${index}"
+                @change=${(ev: any) => this._plantChanged(index, 'illuminance_sensor', ev.target.value)}
+              >
+                <option value="">Select sensor...</option>
+                ${sensorEntities.map(entity => html`
+                  <option 
+                    value=${entity} 
+                    ?selected=${entity === plant.illuminance_sensor}
+                  >
+                    ${entity} (${this.hass.states[entity]?.attributes?.friendly_name || entity})
+                  </option>
+                `)}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="plant-conductivity-${index}">Conductivity Sensor</label>
+              <select
+                id="plant-conductivity-${index}"
+                @change=${(ev: any) => this._plantChanged(index, 'conductivity_sensor', ev.target.value)}
+              >
+                <option value="">Select sensor...</option>
+                ${sensorEntities.map(entity => html`
+                  <option 
+                    value=${entity} 
+                    ?selected=${entity === plant.conductivity_sensor}
+                  >
+                    ${entity} (${this.hass.states[entity]?.attributes?.friendly_name || entity})
+                  </option>
+                `)}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="plant-battery-${index}">Battery Sensor</label>
+              <select
+                id="plant-battery-${index}"
+                @change=${(ev: any) => this._plantChanged(index, 'battery_sensor', ev.target.value)}
+              >
+                <option value="">Select sensor...</option>
+                ${sensorEntities.map(entity => html`
+                  <option 
+                    value=${entity} 
+                    ?selected=${entity === plant.battery_sensor}
+                  >
+                    ${entity} (${this.hass.states[entity]?.attributes?.friendly_name || entity})
+                  </option>
+                `)}
+              </select>
             </div>
 
             <button class="remove-button" @click=${() => this._removePlant(index)}>Remove Plant</button>
