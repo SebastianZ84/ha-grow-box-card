@@ -510,7 +510,7 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     }
   }
 
-  private renderPlantGrid(): any {
+  private renderPlantGrid(): TemplateResult {
     const plants = this.config.plants || [];
     const plantColors = ['#4CAF50', '#8BC34A', '#CDDC39', '#FFC107'];
     const plantIcons = ['🌿', '🌱', '🌿', '🌱'];
@@ -521,7 +521,7 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
       { x: 210, y: 440 }   // Plant 4 (Bottom Right)
     ];
 
-    return positions.map((pos, index) => {
+    const plantElements = positions.map((pos, index) => {
       const plant = plants[index];
       const color = plantColors[index];
       const icon = plantIcons[index];
@@ -614,6 +614,8 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         </g>
       `;
     });
+
+    return html`${plantElements}`;
   }
 
   protected render() {

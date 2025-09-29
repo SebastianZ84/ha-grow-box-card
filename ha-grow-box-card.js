@@ -501,7 +501,7 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             { x: 40, y: 440 }, // Plant 3 (Bottom Left)
             { x: 210, y: 440 } // Plant 4 (Bottom Right)
         ];
-        return positions.map((pos, index) => {
+        const plantElements = positions.map((pos, index) => {
             var _a, _b;
             const plant = plants[index];
             const color = plantColors[index];
@@ -591,6 +591,7 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         </g>
       `;
         });
+        return x `${plantElements}`;
     }
     render() {
         var _a, _b, _c, _d;
