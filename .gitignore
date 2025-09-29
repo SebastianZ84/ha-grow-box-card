@@ -6,6 +6,13 @@ node_modules/
 *.tgz
 *.tar.gz
 
+# Screenshots and examples (keep reference images but ignore HTML exports)
+Pics/*.html
+Pics/*_files/
+!Pics/*.png
+!Pics/*.jpg
+!Pics/*.jpeg
+
 # Keep the main dist file for HACS but ignore dev builds
 dist/
 !ha-grow-box-card.js

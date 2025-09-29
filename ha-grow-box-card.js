@@ -279,28 +279,51 @@ let GrowBoxCard = class GrowBoxCard extends i {
     }
     renderPlants() {
         var _a;
-        if (!((_a = this.config.plants) === null || _a === void 0 ? void 0 : _a.length))
-            return x ``;
-        return x `
-      <div class="plants">
-        <h3>Plants</h3>
-        <div class="plant-grid">
-          ${this.config.plants.map(plant => this.renderPlant(plant))}
+        if (!((_a = this.config.plants) === null || _a === void 0 ? void 0 : _a.length)) {
+            return x `
+        <div class="plant-pots">
+          <div class="plant-pot empty"><span>1</span></div>
+          <div class="plant-pot empty"><span>2</span></div>
+          <div class="plant-pot empty"><span>3</span></div>
+          <div class="plant-pot empty"><span>4</span></div>
         </div>
+      `;
+        }
+        const plantsByPosition = new Map();
+        this.config.plants.forEach(plant => {
+            plantsByPosition.set(plant.position || 1, plant);
+        });
+        return x `
+      <div class="plant-pots">
+        ${[1, 2, 3, 4].map(position => {
+            const plant = plantsByPosition.get(position);
+            return this.renderPlantPot(plant, position);
+        })}
       </div>
     `;
     }
-    renderPlant(plant) {
-        const state = this.hass.states[plant.entity];
-        if (!state)
-            return x `<div class="plant unavailable">${plant.name}</div>`;
-        return x `
-      <div class="plant" data-position="${plant.position}">
-        <div class="plant-name">${plant.name}</div>
-        <div class="plant-state">${state.state}</div>
-        <div class="plant-attributes">
-          ${Object.entries(state.attributes || {}).map(([key, value]) => x `<div class="attribute"><span class="key">${key}:</span> <span class="value">${value}</span></div>`)}
+    renderPlantPot(plant, position) {
+        if (!plant) {
+            return x `
+        <div class="plant-pot empty">
+          <span class="pot-number">${position}</span>
         </div>
+      `;
+        }
+        const state = this.hass.states[plant.entity];
+        const hasState = !!state;
+        const isHealthy = hasState && state.state === 'ok';
+        return x `
+      <div class="plant-pot ${hasState ? (isHealthy ? 'healthy' : 'attention') : 'unavailable'}" 
+           title="${plant.name}${hasState ? ` - ${state.state}` : ' - No data'}">
+        <div class="plant-visual">
+          <div class="plant-leaves ${isHealthy ? 'green' : 'yellow'}"></div>
+          <div class="plant-stem"></div>
+        </div>
+        <div class="pot-base">
+          <span class="pot-number">${position}</span>
+        </div>
+        <div class="plant-name">${plant.name}</div>
       </div>
     `;
     }
@@ -324,27 +347,179 @@ let GrowBoxCard = class GrowBoxCard extends i {
         const service = ((_a = this.hass.states[entityId]) === null || _a === void 0 ? void 0 : _a.state) === 'on' ? 'turn_off' : 'turn_on';
         this.hass.callService(domain, service, { entity_id: entityId });
     }
+    renderComponent(type, name, entityId, number, position) {
+        const entity = entityId ? this.hass.states[entityId] : null;
+        const isOn = entity ? ['on', 'open', 'home'].includes(entity.state.toLowerCase()) : false;
+        const isClickable = !!entityId;
+        return x `
+      <div 
+        class="component ${type} ${position} ${isOn ? 'active' : 'inactive'} ${isClickable ? 'clickable' : ''}"
+        @click=${isClickable ? () => this.toggleEntity(entityId) : null}
+        title="${name}${entity ? ` (${entity.state})` : ''}"
+      >
+        <div class="component-number">${number}</div>
+        <div class="component-icon ${type}"></div>
+      </div>
+    `;
+    }
+    renderStatusIndicator(entityId) {
+        if (!entityId || !this.hass.states[entityId]) {
+            return x `<span class="status-indicator unavailable">N/A</span>`;
+        }
+        const entity = this.hass.states[entityId];
+        const isOn = ['on', 'open', 'home'].includes(entity.state.toLowerCase());
+        return x `
+      <span class="status-indicator ${isOn ? 'on' : 'off'}" @click=${() => this.toggleEntity(entityId)}>
+        ${entity.state}
+      </span>
+    `;
+    }
+    renderSensorValue(entityId, unit) {
+        if (!entityId || !this.hass.states[entityId]) {
+            return x `<span class="sensor-value unavailable">--</span>`;
+        }
+        const entity = this.hass.states[entityId];
+        const value = parseFloat(entity.state);
+        const displayValue = isNaN(value) ? entity.state : value.toFixed(1);
+        return x `
+      <span class="sensor-value">${displayValue}${unit}</span>
+    `;
+    }
     render() {
         if (!this.config || !this.hass) {
             return x ``;
         }
         return x `
-      <ha-card .header=${this.config.name}>
+      <ha-card .header=${this.config.name || 'Grow Box'}>
         <div class="card-content">
-          <div class="grow-tent-layout">
-            <div class="tent-visual">
+          <div class="grow-tent-schema">
+            <!-- Main Tent Structure -->
+            <div class="tent-container">
               <div class="tent-frame">
-                <div class="tent-interior">
-                  ${this.renderPlants()}
-                  ${this.renderCamera()}
+                
+                <!-- Top Components -->
+                <div class="component-group top">
+                  ${this.renderComponent('extractor', 'Extractor', this.config.ventilation_entity, 1, 'top-left')}
+                  ${this.renderComponent('filter', 'Carbon Filter', null, 2, 'top-center')}
+                  ${this.renderComponent('thermo', 'Temp/Humidity', this.config.inner_temp_entity, 9, 'top-right')}
                 </div>
+
+                <!-- Reflector and Light -->
+                <div class="reflector-assembly">
+                  <div class="reflector">
+                    <div class="component-number">3</div>
+                    <div class="reflector-body">
+                      ${this.renderComponent('light-bulb', 'Growth Light', this.config.light_entity, 4, 'light-position')}
+                    </div>
+                  </div>
+                  <div class="light-beam"></div>
+                </div>
+
+                <!-- Side Components -->
+                <div class="component-group left">
+                  ${this.renderComponent('ballast', 'Ballast', this.config.heating_entity, 5, 'left-side')}
+                </div>
+
+                <div class="component-group right">
+                  ${this.renderComponent('thermostat', 'Thermostat', null, 8, 'right-side')}
+                  ${this.renderComponent('fan', 'Ventilator', null, 7, 'right-bottom')}
+                </div>
+
+                <!-- Bottom Components -->
+                <div class="component-group bottom">
+                  ${this.renderComponent('intake', 'Intake Fan', null, 6, 'bottom-right')}
+                </div>
+
+                <!-- Plants Area -->
+                <div class="plants-area">
+                  ${this.renderPlants()}
+                </div>
+
+                <!-- Camera if configured -->
+                ${this.config.camera_entity ? x `
+                  <div class="camera-view">
+                    <ha-camera-stream
+                      .hass=${this.hass}
+                      .stateObj=${this.hass.states[this.config.camera_entity]}
+                      allow-exoplayer
+                    ></ha-camera-stream>
+                  </div>
+                ` : ''}
               </div>
             </div>
-            
-            <div class="monitoring-panel">
-              ${this.renderEnvironmentalSensors()}
+
+            <!-- Legend Panel -->
+            <div class="legend-panel">
+              <h3>Components</h3>
+              <div class="legend-items">
+                <div class="legend-item">
+                  <span class="legend-number">1</span>
+                  <span class="legend-text">Extractor</span>
+                  ${this.renderStatusIndicator(this.config.ventilation_entity)}
+                </div>
+                <div class="legend-item">
+                  <span class="legend-number">2</span>
+                  <span class="legend-text">Carbon Filter</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-number">3</span>
+                  <span class="legend-text">Reflector</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-number">4</span>
+                  <span class="legend-text">Growth Light</span>
+                  ${this.renderStatusIndicator(this.config.light_entity)}
+                </div>
+                <div class="legend-item">
+                  <span class="legend-number">5</span>
+                  <span class="legend-text">Ballast</span>
+                  ${this.renderStatusIndicator(this.config.heating_entity)}
+                </div>
+                <div class="legend-item">
+                  <span class="legend-number">6</span>
+                  <span class="legend-text">Intake Fan</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-number">7</span>
+                  <span class="legend-text">Ventilator</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-number">8</span>
+                  <span class="legend-text">Thermostat</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-number">9</span>
+                  <span class="legend-text">Temp/Humidity</span>
+                  ${this.renderSensorValue(this.config.inner_temp_entity, '°C')}
+                  ${this.renderSensorValue(this.config.inner_humidity_entity, '%')}
+                </div>
+              </div>
+
+              <!-- VPD Display -->
               ${this.renderVPD()}
-              ${this.renderControls()}
+
+              <!-- Environmental Data -->
+              <div class="environmental-data">
+                <h4>Environment</h4>
+                <div class="env-grid">
+                  <div class="env-item">
+                    <span class="env-label">Inner Temp</span>
+                    ${this.renderSensorValue(this.config.inner_temp_entity, '°C')}
+                  </div>
+                  <div class="env-item">
+                    <span class="env-label">Inner Humidity</span>
+                    ${this.renderSensorValue(this.config.inner_humidity_entity, '%')}
+                  </div>
+                  <div class="env-item">
+                    <span class="env-label">Leaf Temp</span>
+                    ${this.renderSensorValue(this.config.leaf_temp_entity, '°C')}
+                  </div>
+                  <div class="env-item">
+                    <span class="env-label">Outer Temp</span>
+                    ${this.renderSensorValue(this.config.outer_temp_entity, '°C')}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -354,305 +529,480 @@ let GrowBoxCard = class GrowBoxCard extends i {
     static get styles() {
         return i$3 `
       ha-card {
-        padding: 16px;
+        padding: 0;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
       }
 
       .card-content {
-        padding: 0;
+        padding: 20px;
       }
 
-      .grow-tent-layout {
+      .grow-tent-schema {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-        min-height: 400px;
+        grid-template-columns: 2fr 1fr;
+        gap: 24px;
+        min-height: 500px;
       }
 
-      .tent-visual {
-        border: 2px solid #333;
-        border-radius: 8px;
-        padding: 10px;
-        background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+      /* Main Tent Container */
+      .tent-container {
+        background: linear-gradient(145deg, #ffffff 0%, #f1f3f4 100%);
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         position: relative;
+        overflow: hidden;
       }
 
       .tent-frame {
-        border: 3px solid #666;
-        border-radius: 4px;
+        position: relative;
+        width: 100%;
         height: 100%;
-        background: linear-gradient(45deg, #2a2a2a 25%, transparent 25%), 
-                    linear-gradient(-45deg, #2a2a2a 25%, transparent 25%), 
-                    linear-gradient(45deg, transparent 75%, #2a2a2a 75%), 
-                    linear-gradient(-45deg, transparent 75%, #2a2a2a 75%);
-        background-size: 20px 20px;
-        background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        min-height: 450px;
+        background: linear-gradient(to bottom, #e8e8e8 0%, #d0d0d0 100%);
+        border: 4px solid #333;
+        border-radius: 8px;
+        box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
       }
 
-      .tent-interior {
-        background: rgba(0, 0, 0, 0.1);
-        height: 100%;
-        border-radius: 2px;
-        padding: 10px;
+      /* Component Groups */
+      .component-group {
+        position: absolute;
+        display: flex;
+        gap: 10px;
+      }
+
+      .component-group.top {
+        top: -30px;
+        left: 20px;
+        right: 20px;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .component-group.left {
+        left: -30px;
+        top: 50%;
+        transform: translateY(-50%);
+        flex-direction: column;
+      }
+
+      .component-group.right {
+        right: -30px;
+        top: 40%;
+        transform: translateY(-50%);
+        flex-direction: column;
+      }
+
+      .component-group.bottom {
+        bottom: -30px;
+        right: 60px;
+      }
+
+      /* Components */
+      .component {
+        position: relative;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(145deg, #f0f0f0, #d0d0d0);
+        border: 2px solid #666;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      }
+
+      .component.clickable:hover {
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      }
+
+      .component.active {
+        background: linear-gradient(145deg, #4caf50, #45a049);
+        border-color: #2e7d32;
+        color: white;
+      }
+
+      .component.inactive {
+        background: linear-gradient(145deg, #f44336, #d32f2f);
+        border-color: #c62828;
+        color: white;
+      }
+
+      .component-number {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        width: 20px;
+        height: 20px;
+        background: #007acc;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      }
+
+      /* Component Icons */
+      .component-icon {
+        font-size: 20px;
+      }
+
+      .component-icon.extractor::before { content: '🌪️'; }
+      .component-icon.filter::before { content: '🔰'; }
+      .component-icon.thermo::before { content: '🌡️'; }
+      .component-icon.light-bulb::before { content: '💡'; }
+      .component-icon.ballast::before { content: '⚡'; }
+      .component-icon.intake::before { content: '🌬️'; }
+      .component-icon.fan::before { content: '🌀'; }
+      .component-icon.thermostat::before { content: '🎛️'; }
+
+      /* Reflector Assembly */
+      .reflector-assembly {
+        position: absolute;
+        top: 60px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 200px;
+        height: 80px;
+      }
+
+      .reflector {
+        position: relative;
+        width: 100%;
+        height: 40px;
+        background: linear-gradient(145deg, #e0e0e0, #c0c0c0);
+        border: 2px solid #888;
+        border-radius: 20px 20px 5px 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      }
+
+      .reflector-body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .light-beam {
+        position: absolute;
+        top: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 80px solid transparent;
+        border-right: 80px solid transparent;
+        border-top: 100px solid rgba(255, 255, 0, 0.3);
+        z-index: 1;
+      }
+
+      /* Plants Area */
+      .plants-area {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2;
+      }
+
+      .plant-pots {
+        display: flex;
+        gap: 15px;
+        align-items: end;
+      }
+
+      .plant-pot {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .plant-pot:hover {
+        transform: translateY(-2px);
+      }
+
+      .plant-visual {
+        position: relative;
+        margin-bottom: 5px;
+      }
+
+      .plant-leaves {
+        width: 30px;
+        height: 30px;
+        border-radius: 50% 0;
+        transform: rotate(-45deg);
+        margin-bottom: -10px;
+        z-index: 1;
         position: relative;
       }
 
-      .monitoring-panel {
+      .plant-leaves.green {
+        background: linear-gradient(45deg, #4caf50, #66bb6a);
+        box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+      }
+
+      .plant-leaves.yellow {
+        background: linear-gradient(45deg, #ffc107, #ffeb3b);
+        box-shadow: 0 2px 4px rgba(255, 193, 7, 0.3);
+      }
+
+      .plant-stem {
+        width: 4px;
+        height: 20px;
+        background: #8bc34a;
+        margin: 0 auto;
+        border-radius: 2px;
+      }
+
+      .pot-base {
+        width: 40px;
+        height: 30px;
+        background: linear-gradient(145deg, #8d6e63, #6d4c41);
+        border-radius: 0 0 20px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        position: relative;
+      }
+
+      .pot-number {
+        color: white;
+        font-size: 12px;
+        font-weight: bold;
+      }
+
+      .plant-name {
+        font-size: 10px;
+        margin-top: 4px;
+        text-align: center;
+        color: var(--primary-text-color);
+        font-weight: 500;
+      }
+
+      .plant-pot.empty .pot-base {
+        background: linear-gradient(145deg, #bdbdbd, #9e9e9e);
+      }
+
+      .plant-pot.healthy .pot-base {
+        border: 2px solid #4caf50;
+      }
+
+      .plant-pot.attention .pot-base {
+        border: 2px solid #ff9800;
+      }
+
+      .plant-pot.unavailable .pot-base {
+        border: 2px solid #f44336;
+      }
+
+      /* Camera View */
+      .camera-view {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 120px;
+        height: 90px;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 2px solid #333;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      }
+
+      /* Legend Panel */
+      .legend-panel {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        height: fit-content;
+      }
+
+      .legend-panel h3 {
+        margin: 0 0 16px 0;
+        color: var(--primary-color);
+        font-size: 18px;
+        border-bottom: 2px solid var(--primary-color);
+        padding-bottom: 8px;
+      }
+
+      .legend-items {
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 12px;
       }
 
-      .environmental-sensors {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px;
+        border-radius: 6px;
+        background: rgba(0, 122, 204, 0.05);
+        transition: all 0.2s ease;
       }
 
-      .sensor-group h3 {
-        margin: 0 0 8px 0;
+      .legend-item:hover {
+        background: rgba(0, 122, 204, 0.1);
+      }
+
+      .legend-number {
+        width: 24px;
+        height: 24px;
+        background: #007acc;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+        flex-shrink: 0;
+      }
+
+      .legend-text {
+        flex: 1;
         font-size: 14px;
+        color: var(--primary-text-color);
+        font-weight: 500;
+      }
+
+      .status-indicator {
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .status-indicator.on {
+        background: #4caf50;
+        color: white;
+      }
+
+      .status-indicator.off {
+        background: #f44336;
+        color: white;
+      }
+
+      .status-indicator.unavailable {
+        background: #9e9e9e;
+        color: white;
+      }
+
+      .sensor-value {
+        font-size: 13px;
+        font-weight: bold;
         color: var(--primary-color);
       }
 
-      .sensors {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
+      .sensor-value.unavailable {
+        color: #9e9e9e;
       }
 
-      .sensor {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px;
-        border-radius: 4px;
-        background: var(--card-background-color);
-        border: 1px solid var(--divider-color);
-      }
-
-      .sensor.temperature { border-left: 4px solid #ff6b6b; }
-      .sensor.humidity { border-left: 4px solid #4ecdc4; }
-      .sensor.leaf-temperature { border-left: 4px solid #45b7d1; }
-
-      .sensor.unavailable {
-        opacity: 0.5;
-        border-left: 4px solid #ccc;
-      }
-
-      .sensor .value {
-        font-weight: bold;
-        font-size: 18px;
-      }
-
-      .sensor .unit {
-        font-size: 12px;
-        color: var(--secondary-text-color);
-      }
-
-      .sensor .name {
-        font-size: 12px;
-        color: var(--secondary-text-color);
-        margin-left: auto;
-      }
-
+      /* VPD Display */
       .vpd-display {
+        margin: 20px 0;
         text-align: center;
         padding: 16px;
         border-radius: 8px;
-        background: var(--card-background-color);
+        background: linear-gradient(145deg, var(--vpd-color, #e0e0e0), rgba(255,255,255,0.1));
         border: 2px solid var(--vpd-color, #ccc);
       }
 
       .vpd-display h3 {
         margin: 0 0 8px 0;
         color: var(--primary-color);
+        border: none;
+        padding: 0;
       }
 
       .vpd-value {
-        font-size: 24px;
+        font-size: 20px;
         font-weight: bold;
         color: var(--vpd-color, #333);
       }
 
       .vpd-phase {
-        font-size: 14px;
-        color: var(--secondary-text-color);
+        font-size: 12px;
         margin-top: 4px;
+        opacity: 0.8;
       }
 
-      .controls h3 {
+      /* Environmental Data */
+      .environmental-data {
+        margin-top: 20px;
+      }
+
+      .environmental-data h4 {
         margin: 0 0 12px 0;
         color: var(--primary-color);
+        font-size: 14px;
       }
 
-      .control-grid {
+      .env-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        grid-template-columns: 1fr 1fr;
         gap: 8px;
-        margin-bottom: 16px;
       }
 
-      .control {
+      .env-item {
         display: flex;
         flex-direction: column;
-        align-items: center;
-        padding: 12px;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        background: var(--card-background-color);
-        border: 2px solid var(--divider-color);
-      }
-
-      .control.on {
-        border-color: var(--primary-color);
-        background: var(--primary-color);
-        color: white;
-      }
-
-      .control.off {
-        border-color: #ccc;
-      }
-
-      .control.unavailable {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-
-      .control:hover:not(.unavailable) {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-      }
-
-      .control-icon {
-        width: 24px;
-        height: 24px;
-        margin-bottom: 8px;
-      }
-
-      .control-icon.lightbulb::before { content: '💡'; }
-      .control-icon.radiator::before { content: '🔥'; }
-      .control-icon.fan::before { content: '💨'; }
-
-      .control-name {
-        font-size: 12px;
-        font-weight: bold;
-      }
-
-      .control-state {
-        font-size: 10px;
-        opacity: 0.8;
-        margin-top: 2px;
-      }
-
-      .vents h4 {
-        margin: 0 0 8px 0;
-        font-size: 14px;
-        color: var(--primary-color);
-      }
-
-      .vent-controls {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-
-      .vent-control {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 12px;
-        border-radius: 16px;
-        cursor: pointer;
-        font-size: 12px;
-        transition: all 0.3s ease;
-      }
-
-      .vent-control.open {
-        background: #4caf50;
-        color: white;
-      }
-
-      .vent-control.closed {
-        background: #f44336;
-        color: white;
-      }
-
-      .plants {
-        margin-top: 16px;
-      }
-
-      .plants h3 {
-        margin: 0 0 12px 0;
-        color: var(--primary-color);
-        font-size: 14px;
-      }
-
-      .plant-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
-      }
-
-      .plant {
+        gap: 4px;
         padding: 8px;
+        background: rgba(0, 122, 204, 0.05);
         border-radius: 4px;
-        background: rgba(76, 175, 80, 0.1);
-        border: 1px solid #4caf50;
-        font-size: 12px;
       }
 
-      .plant.unavailable {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: #ccc;
-        opacity: 0.5;
-      }
-
-      .plant-name {
-        font-weight: bold;
-        margin-bottom: 4px;
-      }
-
-      .plant-state {
-        color: var(--primary-color);
-        margin-bottom: 4px;
-      }
-
-      .plant-attributes {
-        font-size: 10px;
+      .env-label {
+        font-size: 11px;
         color: var(--secondary-text-color);
+        text-transform: uppercase;
+        font-weight: 600;
       }
 
-      .attribute {
-        margin-bottom: 2px;
-      }
-
-      .attribute .key {
-        font-weight: bold;
-      }
-
-      .camera {
-        margin-top: auto;
-      }
-
-      .camera h3 {
-        margin: 0 0 8px 0;
-        color: var(--primary-color);
-        font-size: 14px;
-      }
-
-      ha-camera-stream {
-        width: 100%;
-        border-radius: 4px;
-        overflow: hidden;
-      }
-
+      /* Responsive Design */
       @media (max-width: 768px) {
-        .grow-tent-layout {
+        .grow-tent-schema {
           grid-template-columns: 1fr;
+          gap: 16px;
         }
         
-        .environmental-sensors {
+        .tent-container {
+          min-height: 350px;
+        }
+
+        .component {
+          width: 40px;
+          height: 40px;
+        }
+
+        .reflector-assembly {
+          width: 150px;
+          height: 60px;
+        }
+
+        .light-beam {
+          border-left-width: 60px;
+          border-right-width: 60px;
+          border-top-width: 80px;
+        }
+
+        .env-grid {
           grid-template-columns: 1fr;
         }
       }
