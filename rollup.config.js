@@ -6,7 +6,7 @@ import serve from 'rollup-plugin-serve';
 export default {
   input: 'src/ha-grow-box-card.ts',
   output: {
-    file: 'dist/ha-grow-box-card.js',
+    file: 'ha-grow-box-card.js',
     format: 'es',
     inlineDynamicImports: true,
   },
@@ -16,6 +16,6 @@ export default {
     typescript({
       declaration: false,
     }),
-    ...(process.env.ROLLUP_WATCH ? [serve({ contentBase: ['dist'] })] : []),
+    ...(process.env.ROLLUP_WATCH ? [serve({ contentBase: ['.'] })] : []),
   ],
 };

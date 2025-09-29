@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "description": "A Home Assistant custom card for monitoring and controlling cannabis grow tents",
-  "main": "dist/ha-grow-box-card.js",
+  "main": "ha-grow-box-card.js",
   "scripts": {
     "build": "rollup -c",
     "dev": "rollup -c -w",

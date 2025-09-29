@@ -1,6 +1,6 @@
 {
   "name": "HA Grow Box Card",
-  "content_in_root": false,
+  "content_in_root": true,
   "filename": "ha-grow-box-card.js",
   "country": ["DE", "US", "CA", "NL", "ES"],
   "homeassistant": "2023.4.0",
