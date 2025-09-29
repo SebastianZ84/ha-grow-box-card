@@ -1,0 +1,128 @@
+<svg viewBox="0 0 400 600" xmlns="http://www.w3.org/2000/svg">
+  <!-- Card Background -->
+  <rect width="400" height="600" fill="#1a1a1a" rx="12"/>
+  
+  <!-- Header -->
+  <rect width="400" height="60" fill="#2d2d2d" rx="12"/>
+  <text x="20" y="38" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#4CAF50">
+    🌱 Growbox
+  </text>
+  
+  <!-- Temperature & Humidity Display -->
+  <g id="climate-inner">
+    <rect x="20" y="75" width="170" height="70" fill="#2d2d2d" rx="8"/>
+    <text x="30" y="95" font-family="Arial" font-size="12" fill="#888">Innen</text>
+    <text x="30" y="120" font-family="Arial" font-size="20" font-weight="bold" fill="#4CAF50">24.5°C</text>
+    <text x="110" y="120" font-family="Arial" font-size="20" font-weight="bold" fill="#2196F3">65%</text>
+    <text x="30" y="138" font-family="Arial" font-size="10" fill="#666">Temperatur</text>
+    <text x="110" y="138" font-family="Arial" font-size="10" fill="#666">Feuchtigkeit</text>
+  </g>
+  
+  <g id="climate-outer">
+    <rect x="210" y="75" width="170" height="70" fill="#2d2d2d" rx="8"/>
+    <text x="220" y="95" font-family="Arial" font-size="12" fill="#888">Außen</text>
+    <text x="220" y="120" font-family="Arial" font-size="20" font-weight="bold" fill="#FF9800">21.2°C</text>
+    <text x="300" y="120" font-family="Arial" font-size="20" font-weight="bold" fill="#03A9F4">58%</text>
+    <text x="220" y="138" font-family="Arial" font-size="10" fill="#666">Temperatur</text>
+    <text x="300" y="138" font-family="Arial" font-size="10" fill="#666">Feuchtigkeit</text>
+  </g>
+  
+  <!-- Control Section -->
+  <g id="controls">
+    <!-- Lampe (Light with Dimmer) -->
+    <rect x="20" y="160" width="170" height="90" fill="#2d2d2d" rx="8"/>
+    <circle cx="60" cy="190" r="18" fill="#FFC107" opacity="0.9"/>
+    <text x="60" y="195" font-family="Arial" font-size="20" text-anchor="middle">💡</text>
+    <text x="90" y="185" font-family="Arial" font-size="14" fill="#fff">Lampe</text>
+    <text x="90" y="203" font-family="Arial" font-size="12" fill="#888">75%</text>
+    <!-- Dimmer Slider -->
+    <rect x="30" y="220" width="150" height="4" fill="#444" rx="2"/>
+    <rect x="30" y="220" width="112" height="4" fill="#FFC107" rx="2"/>
+    <circle cx="142" cy="222" r="8" fill="#FFC107"/>
+  </g>
+  
+  <g id="ventilation">
+    <!-- Abluft (Exhaust) -->
+    <rect x="210" y="160" width="80" height="90" fill="#2d2d2d" rx="8"/>
+    <circle cx="250" cy="190" r="18" fill="#00BCD4" opacity="0.8"/>
+    <text x="250" y="197" font-family="Arial" font-size="22" text-anchor="middle">🌀</text>
+    <text x="250" y="218" font-family="Arial" font-size="11" fill="#fff" text-anchor="middle">Abluft</text>
+    <text x="250" y="235" font-family="Arial" font-size="13" fill="#00BCD4" text-anchor="middle">AN</text>
+    
+    <!-- Vents -->
+    <rect x="300" y="160" width="80" height="90" fill="#2d2d2d" rx="8"/>
+    <circle cx="340" cy="190" r="18" fill="#9C27B0" opacity="0.8"/>
+    <text x="340" y="197" font-family="Arial" font-size="22" text-anchor="middle">💨</text>
+    <text x="340" y="218" font-family="Arial" font-size="11" fill="#fff" text-anchor="middle">Vents</text>
+    <text x="340" y="235" font-family="Arial" font-size="13" fill="#9C27B0" text-anchor="middle">AN</text>
+  </g>
+  
+  <!-- Growbox Schema -->
+  <rect x="20" y="265" width="360" height="315" fill="#1a1a1a" stroke="#4CAF50" stroke-width="2" rx="8"/>
+  <text x="200" y="285" font-family="Arial" font-size="14" fill="#4CAF50" text-anchor="middle">Growbox (2x2)</text>
+  
+  <!-- Plant Grid 2x2 -->
+  <!-- Plant 1 (Top Left) -->
+  <g id="plant1">
+    <rect x="40" y="300" width="150" height="130" fill="#2d2d2d" rx="8" stroke="#4CAF50" stroke-width="1"/>
+    <text x="115" y="320" font-family="Arial" font-size="20" text-anchor="middle">🌿</text>
+    <text x="115" y="345" font-family="Arial" font-size="12" fill="#4CAF50" text-anchor="middle">Pflanze 1</text>
+    <g transform="translate(50, 355)">
+      <text x="0" y="0" font-family="Arial" font-size="10" fill="#888">💧 65%</text>
+      <text x="60" y="0" font-family="Arial" font-size="10" fill="#888">☀️ 850 lx</text>
+      <text x="0" y="15" font-family="Arial" font-size="10" fill="#888">🌡️ 24°C</text>
+      <text x="60" y="15" font-family="Arial" font-size="10" fill="#888">🧪 450 µS</text>
+      <rect x="0" y="25" width="130" height="6" fill="#444" rx="3"/>
+      <rect x="0" y="25" width="104" height="6" fill="#4CAF50" rx="3"/>
+      <text x="65" y="45" font-family="Arial" font-size="9" fill="#4CAF50" text-anchor="middle">Gesund - 80%</text>
+    </g>
+  </g>
+  
+  <!-- Plant 2 (Top Right) -->
+  <g id="plant2">
+    <rect x="210" y="300" width="150" height="130" fill="#2d2d2d" rx="8" stroke="#8BC34A" stroke-width="1"/>
+    <text x="285" y="320" font-family="Arial" font-size="20" text-anchor="middle">🌱</text>
+    <text x="285" y="345" font-family="Arial" font-size="12" fill="#8BC34A" text-anchor="middle">Pflanze 2</text>
+    <g transform="translate(220, 355)">
+      <text x="0" y="0" font-family="Arial" font-size="10" fill="#888">💧 58%</text>
+      <text x="60" y="0" font-family="Arial" font-size="10" fill="#888">☀️ 820 lx</text>
+      <text x="0" y="15" font-family="Arial" font-size="10" fill="#888">🌡️ 23°C</text>
+      <text x="60" y="15" font-family="Arial" font-size="10" fill="#888">🧪 420 µS</text>
+      <rect x="0" y="25" width="130" height="6" fill="#444" rx="3"/>
+      <rect x="0" y="25" width="91" height="6" fill="#8BC34A" rx="3"/>
+      <text x="65" y="45" font-family="Arial" font-size="9" fill="#8BC34A" text-anchor="middle">Gut - 70%</text>
+    </g>
+  </g>
+  
+  <!-- Plant 3 (Bottom Left) -->
+  <g id="plant3">
+    <rect x="40" y="440" width="150" height="130" fill="#2d2d2d" rx="8" stroke="#CDDC39" stroke-width="1"/>
+    <text x="115" y="460" font-family="Arial" font-size="20" text-anchor="middle">🌿</text>
+    <text x="115" y="485" font-family="Arial" font-size="12" fill="#CDDC39" text-anchor="middle">Pflanze 3</text>
+    <g transform="translate(50, 495)">
+      <text x="0" y="0" font-family="Arial" font-size="10" fill="#888">💧 62%</text>
+      <text x="60" y="0" font-family="Arial" font-size="10" fill="#888">☀️ 840 lx</text>
+      <text x="0" y="15" font-family="Arial" font-size="10" fill="#888">🌡️ 24°C</text>
+      <text x="60" y="15" font-family="Arial" font-size="10" fill="#888">🧪 440 µS</text>
+      <rect x="0" y="25" width="130" height="6" fill="#444" rx="3"/>
+      <rect x="0" y="25" width="98" height="6" fill="#CDDC39" rx="3"/>
+      <text x="65" y="45" font-family="Arial" font-size="9" fill="#CDDC39" text-anchor="middle">Gesund - 75%</text>
+    </g>
+  </g>
+  
+  <!-- Plant 4 (Bottom Right) -->
+  <g id="plant4">
+    <rect x="210" y="440" width="150" height="130" fill="#2d2d2d" rx="8" stroke="#FFC107" stroke-width="1"/>
+    <text x="285" y="460" font-family="Arial" font-size="20" text-anchor="middle">🌱</text>
+    <text x="285" y="485" font-family="Arial" font-size="12" fill="#FFC107" text-anchor="middle">Pflanze 4</text>
+    <g transform="translate(220, 495)">
+      <text x="0" y="0" font-family="Arial" font-size="10" fill="#888">💧 52%</text>
+      <text x="60" y="0" font-family="Arial" font-size="10" fill="#888">☀️ 790 lx</text>
+      <text x="0" y="15" font-family="Arial" font-size="10" fill="#888">🌡️ 23°C</text>
+      <text x="60" y="15" font-family="Arial" font-size="10" fill="#888">🧪 390 µS</text>
+      <rect x="0" y="25" width="130" height="6" fill="#444" rx="3"/>
+      <rect x="0" y="25" width="78" height="6" fill="#FFC107" rx="3"/>
+      <text x="65" y="45" font-family="Arial" font-size="9" fill="#FFC107" text-anchor="middle">Achtung - 60%</text>
+    </g>
+  </g>
+</svg>
