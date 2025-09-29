@@ -42,7 +42,7 @@ export interface VentConfig {
 
 export interface PlantConfig {
   name: string;
-  entity: string;
+  entity?: string; // Optional - can use individual sensors without plant entity
   position?: number; // 1-4 for positioning in the tent
   image?: string;
   // Individual sensor entities (like lovelace flower card)

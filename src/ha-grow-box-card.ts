@@ -1,6 +1,7 @@
 import { LitElement, html, css, TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant, LovelaceCard, LovelaceCardConfig, LovelaceCardEditor } from 'custom-card-helpers';
+import { GrowBoxCardConfig, PlantConfig, VentConfig, VPDConfig } from './types';
 
 declare global {
   interface HTMLElementTagNameMap {
@@ -9,40 +10,6 @@ declare global {
   }
 }
 
-interface GrowBoxCardConfig extends LovelaceCardConfig {
-  type: string;
-  name?: string;
-  inner_temp_entity?: string;
-  inner_humidity_entity?: string;
-  outer_temp_entity?: string;
-  outer_humidity_entity?: string;
-  leaf_temp_entity?: string;
-  light_entity?: string;
-  heating_entity?: string;
-  ventilation_entity?: string;
-  ballast_entity?: string;
-  vents?: VentConfig[];
-  plants?: PlantConfig[];
-  vpd?: VPDConfig;
-  camera_entity?: string;
-}
-
-interface VentConfig {
-  name: string;
-  entity: string;
-  icon?: string;
-}
-
-interface PlantConfig {
-  name: string;
-  entity?: string;
-  position: number;
-}
-
-interface VPDConfig {
-  enabled: boolean;
-  show_phases: boolean;
-}
 
 @customElement('ha-grow-box-card')
 export class HaGrowBoxCard extends LitElement implements LovelaceCard {
@@ -586,16 +553,34 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
           };
         }
       } else if (plant?.name) {
-        // Plant configured but no entity
-        plantData = {
-          moisture: 'No entity',
-          light: 'No entity',
-          temp: 'No entity',
-          ec: 'No entity',
-          health: 50,
-          status: 'No entity configured',
-          healthColor: '#ff9800'
-        };
+        // Plant configured but no entity - check for individual sensors
+        const hasIndividualSensors = plant.moisture_sensor || plant.temperature_sensor || 
+                                   plant.illuminance_sensor || plant.conductivity_sensor;
+        
+        if (hasIndividualSensors) {
+          // Use individual sensors without plant entity
+          plantData = {
+            moisture: plant.moisture_sensor ? (this.hass.states[plant.moisture_sensor]?.state || 'N/A') : 'N/A',
+            light: plant.illuminance_sensor ? (this.hass.states[plant.illuminance_sensor]?.state || 'N/A') : 'N/A',
+            temp: plant.temperature_sensor ? (this.hass.states[plant.temperature_sensor]?.state || 'N/A') : 'N/A',
+            ec: plant.conductivity_sensor ? (this.hass.states[plant.conductivity_sensor]?.state || 'N/A') : 'N/A',
+            health: 70, // Default good health for individual sensors
+            status: 'Individual sensors',
+            healthColor: '#4caf50'
+          };
+          console.log(`Using individual sensors for plant ${plant.name}:`, plantData);
+        } else {
+          // No entity and no individual sensors
+          plantData = {
+            moisture: 'No sensors',
+            light: 'No sensors', 
+            temp: 'No sensors',
+            ec: 'No sensors',
+            health: 50,
+            status: 'No sensors configured',
+            healthColor: '#ff9800'
+          };
+        }
       }
 
       const healthBarWidth = Math.max(0, Math.min(130, (plantData.health / 100) * 130));
@@ -619,7 +604,8 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
       `);
     }
     
-    return plantElements;
+    // Return all plant elements in a single template
+    return html`${plantElements}`;
   }
 
   protected render() {

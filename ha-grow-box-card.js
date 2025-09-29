@@ -492,7 +492,7 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         }
     }
     renderPlantGrid() {
-        var _a, _b;
+        var _a, _b, _c, _d, _e, _f;
         const plants = this.config.plants || [];
         const plantColors = ['#4CAF50', '#8BC34A', '#CDDC39', '#FFC107'];
         const plantIcons = ['🌿', '🌱', '🌿', '🌱'];
@@ -564,19 +564,37 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
                 }
             }
             else if (plant === null || plant === void 0 ? void 0 : plant.name) {
-                // Plant configured but no entity
-                plantData = {
-                    moisture: 'No entity',
-                    light: 'No entity',
-                    temp: 'No entity',
-                    ec: 'No entity',
-                    health: 50,
-                    status: 'No entity configured',
-                    healthColor: '#ff9800'
-                };
+                // Plant configured but no entity - check for individual sensors
+                const hasIndividualSensors = plant.moisture_sensor || plant.temperature_sensor ||
+                    plant.illuminance_sensor || plant.conductivity_sensor;
+                if (hasIndividualSensors) {
+                    // Use individual sensors without plant entity
+                    plantData = {
+                        moisture: plant.moisture_sensor ? (((_a = this.hass.states[plant.moisture_sensor]) === null || _a === void 0 ? void 0 : _a.state) || 'N/A') : 'N/A',
+                        light: plant.illuminance_sensor ? (((_b = this.hass.states[plant.illuminance_sensor]) === null || _b === void 0 ? void 0 : _b.state) || 'N/A') : 'N/A',
+                        temp: plant.temperature_sensor ? (((_c = this.hass.states[plant.temperature_sensor]) === null || _c === void 0 ? void 0 : _c.state) || 'N/A') : 'N/A',
+                        ec: plant.conductivity_sensor ? (((_d = this.hass.states[plant.conductivity_sensor]) === null || _d === void 0 ? void 0 : _d.state) || 'N/A') : 'N/A',
+                        health: 70, // Default good health for individual sensors
+                        status: 'Individual sensors',
+                        healthColor: '#4caf50'
+                    };
+                    console.log(`Using individual sensors for plant ${plant.name}:`, plantData);
+                }
+                else {
+                    // No entity and no individual sensors
+                    plantData = {
+                        moisture: 'No sensors',
+                        light: 'No sensors',
+                        temp: 'No sensors',
+                        ec: 'No sensors',
+                        health: 50,
+                        status: 'No sensors configured',
+                        healthColor: '#ff9800'
+                    };
+                }
             }
             const healthBarWidth = Math.max(0, Math.min(130, (plantData.health / 100) * 130));
-            const displayName = (plant === null || plant === void 0 ? void 0 : plant.name) || ((plant === null || plant === void 0 ? void 0 : plant.entity) ? (_b = (_a = this.hass.states[plant.entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name : null) || `Pflanze ${plantNum}`;
+            const displayName = (plant === null || plant === void 0 ? void 0 : plant.name) || ((plant === null || plant === void 0 ? void 0 : plant.entity) ? (_f = (_e = this.hass.states[plant.entity]) === null || _e === void 0 ? void 0 : _e.attributes) === null || _f === void 0 ? void 0 : _f.friendly_name : null) || `Pflanze ${plantNum}`;
             plantElements.push(x `
         <g id="plant${plantNum}">
           <rect x="${pos.x}" y="${pos.y}" width="150" height="130" fill="#2d2d2d" rx="8" stroke="${color}" stroke-width="1"/>
@@ -594,7 +612,8 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         </g>
       `);
         }
-        return plantElements;
+        // Return all plant elements in a single template
+        return x `${plantElements}`;
     }
     render() {
         var _a, _b, _c, _d;
