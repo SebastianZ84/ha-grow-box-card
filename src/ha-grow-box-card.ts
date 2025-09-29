@@ -207,10 +207,26 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
       return this.hass.states[sensorEntityId].state;
     }
     
-    // Check for direct attribute values
+    // Check for direct attribute values (common in Home Assistant plant entities)
     const directValue = plantEntity.attributes[sensorType];
-    if (directValue !== undefined) {
+    if (directValue !== undefined && directValue !== null) {
       return directValue.toString();
+    }
+    
+    // Check for sensor data in different attribute names
+    const alternativeNames = {
+      'moisture': ['soil_moisture', 'moisture_level', 'humidity'],
+      'illuminance': ['light_intensity', 'light', 'brightness', 'illuminance'],
+      'temperature': ['temp', 'temperature'],
+      'conductivity': ['electrical_conductivity', 'ec', 'conductivity', 'fertility']
+    };
+    
+    const alternatives = alternativeNames[sensorType] || [];
+    for (const altName of alternatives) {
+      const altValue = plantEntity.attributes[altName];
+      if (altValue !== undefined && altValue !== null) {
+        return altValue.toString();
+      }
     }
     
     return 'N/A';
@@ -287,18 +303,42 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         healthColor: '#666'
       };
 
-      if (plant?.entity && this.hass.states[plant.entity]) {
+      if (plant?.entity) {
         const plantEntity = this.hass.states[plant.entity];
-        const healthData = this.calculatePlantHealth(plantEntity);
-        
+        if (plantEntity) {
+          const healthData = this.calculatePlantHealth(plantEntity);
+          
+          plantData = {
+            moisture: this.getPlantSensorValue(plantEntity, 'moisture'),
+            light: this.getPlantSensorValue(plantEntity, 'illuminance'),
+            temp: this.getPlantSensorValue(plantEntity, 'temperature'),
+            ec: this.getPlantSensorValue(plantEntity, 'conductivity'),
+            health: healthData.health,
+            status: healthData.status,
+            healthColor: healthData.color
+          };
+        } else {
+          // Entity exists but not found in states
+          plantData = {
+            moisture: 'Entity not found',
+            light: 'Entity not found',
+            temp: 'Entity not found',
+            ec: 'Entity not found',
+            health: 0,
+            status: 'Entity not found',
+            healthColor: '#f44336'
+          };
+        }
+      } else if (plant?.name) {
+        // Plant configured but no entity
         plantData = {
-          moisture: this.getPlantSensorValue(plantEntity, 'moisture'),
-          light: this.getPlantSensorValue(plantEntity, 'illuminance'),
-          temp: this.getPlantSensorValue(plantEntity, 'temperature'),
-          ec: this.getPlantSensorValue(plantEntity, 'conductivity'),
-          health: healthData.health,
-          status: healthData.status,
-          healthColor: healthData.color
+          moisture: 'No entity',
+          light: 'No entity',
+          temp: 'No entity',
+          ec: 'No entity',
+          health: 50,
+          status: 'No entity configured',
+          healthColor: '#ff9800'
         };
       }
 
