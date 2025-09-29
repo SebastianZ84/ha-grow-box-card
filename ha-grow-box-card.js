@@ -710,14 +710,14 @@ let GrowBoxCard = class GrowBoxCard extends i {
         margin-bottom: 2px;
       }
 
-      /* Specific Component Positions */
-      .extractor-pos { top: -25px; left: 20px; }
-      .filter-pos { top: -25px; left: 50%; transform: translateX(-50%); }
-      .thermo-pos { top: -25px; right: 20px; }
-      .ballast-pos { left: -25px; top: 50%; transform: translateY(-50%); }
-      .intake-pos { bottom: -25px; right: 80px; }
-      .ventilator-pos { right: -25px; top: 45%; }
-      .thermostat-pos { right: -25px; top: 60%; }
+      /* Specific Component Positions - Moved underneath tent */
+      .extractor-pos { bottom: -80px; left: 20px; }
+      .filter-pos { bottom: -80px; left: 50%; transform: translateX(-50%); }
+      .thermo-pos { bottom: -80px; right: 20px; }
+      .ballast-pos { bottom: -80px; left: 200px; }
+      .intake-pos { bottom: -80px; right: 80px; }
+      .ventilator-pos { bottom: -80px; right: 20px; }
+      .thermostat-pos { bottom: -80px; left: 140px; }
 
       /* Reflector System */
       .reflector-system {
