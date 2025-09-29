@@ -29,7 +29,7 @@ export class GrowBoxCardEditor extends LitElement implements LovelaceCardEditor 
     const fanEntities = allEntities.filter(entity => entity.startsWith('fan.') || entity.startsWith('switch.'));
     const coverEntities = allEntities.filter(entity => entity.startsWith('cover.') || entity.startsWith('switch.'));
     const cameraEntities = allEntities.filter(entity => entity.startsWith('camera.'));
-    const plantEntities = allEntities.filter(entity => entity.startsWith('plant.') || entity.startsWith('sensor.'));
+    const plantEntities = allEntities.filter(entity => entity.startsWith('plant.'));
 
     return html`
       <div class="card-config">

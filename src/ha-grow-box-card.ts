@@ -198,6 +198,68 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     return 'AUS';
   }
 
+  private getPlantSensorValue(plantEntity: any, sensorType: string): string {
+    if (!plantEntity || !plantEntity.attributes) return 'N/A';
+    
+    // Check for direct sensor entity references in plant attributes
+    const sensorEntityId = plantEntity.attributes.sensors?.[sensorType];
+    if (sensorEntityId && this.hass.states[sensorEntityId]) {
+      return this.hass.states[sensorEntityId].state;
+    }
+    
+    // Check for direct attribute values
+    const directValue = plantEntity.attributes[sensorType];
+    if (directValue !== undefined) {
+      return directValue.toString();
+    }
+    
+    return 'N/A';
+  }
+
+  private calculatePlantHealth(plantEntity: any): { health: number; status: string; color: string } {
+    if (!plantEntity) {
+      return { health: 0, status: 'Unbekannt', color: '#666' };
+    }
+
+    const state = plantEntity.state;
+    
+    // Check overall plant state first
+    if (state === 'problem') {
+      return { health: 30, status: 'Problem', color: '#f44336' };
+    } else if (state === 'ok') {
+      return { health: 85, status: 'Gesund', color: '#4caf50' };
+    }
+
+    // Calculate health based on individual sensor readings
+    let healthScore = 100;
+    let problemCount = 0;
+    
+    const sensors = ['moisture', 'conductivity', 'illuminance', 'temperature'];
+    sensors.forEach(sensor => {
+      const value = parseFloat(this.getPlantSensorValue(plantEntity, sensor));
+      const min = plantEntity.attributes[`min_${sensor}`];
+      const max = plantEntity.attributes[`max_${sensor}`];
+      
+      if (!isNaN(value) && min !== undefined && max !== undefined) {
+        if (value < min || value > max) {
+          problemCount++;
+          healthScore -= 20;
+        }
+      }
+    });
+
+    // Determine status and color based on health score
+    if (healthScore >= 80) {
+      return { health: healthScore, status: 'Gesund', color: '#4caf50' };
+    } else if (healthScore >= 60) {
+      return { health: healthScore, status: 'Gut', color: '#8bc34a' };
+    } else if (healthScore >= 40) {
+      return { health: healthScore, status: 'Achtung', color: '#ff9800' };
+    } else {
+      return { health: healthScore, status: 'Problem', color: '#f44336' };
+    }
+  }
+
   private renderPlantGrid(): any {
     const plants = this.config.plants || [];
     const plantColors = ['#4CAF50', '#8BC34A', '#CDDC39', '#FFC107'];
@@ -215,44 +277,47 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
       const icon = plantIcons[index];
       const plantNum = index + 1;
       
-      // Get plant data if entity exists
       let plantData = {
         moisture: 'N/A',
         light: 'N/A', 
         temp: 'N/A',
         ec: 'N/A',
         health: 50,
-        status: 'Unbekannt'
+        status: 'Leer',
+        healthColor: '#666'
       };
 
       if (plant?.entity && this.hass.states[plant.entity]) {
-        const state = this.hass.states[plant.entity];
-        // You can customize this based on your plant entity attributes
+        const plantEntity = this.hass.states[plant.entity];
+        const healthData = this.calculatePlantHealth(plantEntity);
+        
         plantData = {
-          moisture: state.attributes?.moisture || '60',
-          light: state.attributes?.light || '800',
-          temp: state.attributes?.temperature || '24',
-          ec: state.attributes?.conductivity || '400',
-          health: state.attributes?.health || 70,
-          status: state.state === 'ok' ? 'Gesund' : state.state === 'problem' ? 'Achtung' : 'Gut'
+          moisture: this.getPlantSensorValue(plantEntity, 'moisture'),
+          light: this.getPlantSensorValue(plantEntity, 'illuminance'),
+          temp: this.getPlantSensorValue(plantEntity, 'temperature'),
+          ec: this.getPlantSensorValue(plantEntity, 'conductivity'),
+          health: healthData.health,
+          status: healthData.status,
+          healthColor: healthData.color
         };
       }
 
-      const healthBarWidth = (parseInt(plantData.health.toString()) / 100) * 130;
+      const healthBarWidth = Math.max(0, Math.min(130, (plantData.health / 100) * 130));
+      const displayName = plant?.name || (plant?.entity ? this.hass.states[plant.entity]?.attributes?.friendly_name : null) || `Pflanze ${plantNum}`;
 
       return html`
         <g id="plant${plantNum}">
           <rect x="${pos.x}" y="${pos.y}" width="150" height="130" fill="#2d2d2d" rx="8" stroke="${color}" stroke-width="1"/>
           <text x="${pos.x + 75}" y="${pos.y + 20}" font-family="Arial" font-size="20" text-anchor="middle">${icon}</text>
-          <text x="${pos.x + 75}" y="${pos.y + 45}" font-family="Arial" font-size="12" fill="${color}" text-anchor="middle">${plant?.name || `Pflanze ${plantNum}`}</text>
+          <text x="${pos.x + 75}" y="${pos.y + 45}" font-family="Arial" font-size="12" fill="${color}" text-anchor="middle">${displayName}</text>
           <g transform="translate(${pos.x + 10}, ${pos.y + 55})">
-            <text x="0" y="0" font-family="Arial" font-size="10" fill="#888">💧 ${plantData.moisture}%</text>
-            <text x="60" y="0" font-family="Arial" font-size="10" fill="#888">☀️ ${plantData.light} lx</text>
-            <text x="0" y="15" font-family="Arial" font-size="10" fill="#888">🌡️ ${plantData.temp}°C</text>
-            <text x="60" y="15" font-family="Arial" font-size="10" fill="#888">🧪 ${plantData.ec} µS</text>
+            <text x="0" y="0" font-family="Arial" font-size="10" fill="#888">💧 ${plantData.moisture}${plantData.moisture !== 'N/A' ? '%' : ''}</text>
+            <text x="60" y="0" font-family="Arial" font-size="10" fill="#888">☀️ ${plantData.light}${plantData.light !== 'N/A' ? ' lx' : ''}</text>
+            <text x="0" y="15" font-family="Arial" font-size="10" fill="#888">🌡️ ${plantData.temp}${plantData.temp !== 'N/A' ? '°C' : ''}</text>
+            <text x="60" y="15" font-family="Arial" font-size="10" fill="#888">🧪 ${plantData.ec}${plantData.ec !== 'N/A' ? ' µS' : ''}</text>
             <rect x="0" y="25" width="130" height="6" fill="#444" rx="3"/>
-            <rect x="0" y="25" width="${healthBarWidth}" height="6" fill="${color}" rx="3"/>
-            <text x="65" y="45" font-family="Arial" font-size="9" fill="${color}" text-anchor="middle">${plantData.status} - ${plantData.health}%</text>
+            <rect x="0" y="25" width="${healthBarWidth}" height="6" fill="${plantData.healthColor}" rx="3"/>
+            <text x="65" y="45" font-family="Arial" font-size="9" fill="${plantData.healthColor}" text-anchor="middle">${plantData.status} - ${Math.round(plantData.health)}%</text>
           </g>
         </g>
       `;
