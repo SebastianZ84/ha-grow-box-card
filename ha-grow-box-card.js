@@ -594,65 +594,75 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         const sensors = [];
         // Add environmental sensors only if configured
         if (this.config.inner_temp_entity) {
+            const entity = this.hass.states[this.config.inner_temp_entity];
+            const friendlyName = ((_a = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _a === void 0 ? void 0 : _a.friendly_name) || this.config.inner_temp_entity;
             sensors.push(x `
         <div class="sensor-card">
           <div class="sensor-icon temp">🌡️</div>
           <div class="sensor-info">
-            <div class="sensor-label">Innentemperatur</div>
+            <div class="sensor-label">${friendlyName}</div>
             <div class="sensor-value">
-              ${((_a = this.hass.states[this.config.inner_temp_entity]) === null || _a === void 0 ? void 0 : _a.state) || 'N/A'}°C
+              ${(entity === null || entity === void 0 ? void 0 : entity.state) || 'N/A'}°C
             </div>
           </div>
         </div>
       `);
         }
         if (this.config.inner_humidity_entity) {
+            const entity = this.hass.states[this.config.inner_humidity_entity];
+            const friendlyName = ((_b = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || this.config.inner_humidity_entity;
             sensors.push(x `
         <div class="sensor-card">
           <div class="sensor-icon humidity">💧</div>
           <div class="sensor-info">
-            <div class="sensor-label">Innenfeuchtigkeit</div>
+            <div class="sensor-label">${friendlyName}</div>
             <div class="sensor-value">
-              ${((_b = this.hass.states[this.config.inner_humidity_entity]) === null || _b === void 0 ? void 0 : _b.state) || 'N/A'}%
+              ${(entity === null || entity === void 0 ? void 0 : entity.state) || 'N/A'}%
             </div>
           </div>
         </div>
       `);
         }
         if (this.config.outer_temp_entity) {
+            const entity = this.hass.states[this.config.outer_temp_entity];
+            const friendlyName = ((_c = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _c === void 0 ? void 0 : _c.friendly_name) || this.config.outer_temp_entity;
             sensors.push(x `
         <div class="sensor-card">
           <div class="sensor-icon temp">🌡️</div>
           <div class="sensor-info">
-            <div class="sensor-label">Außentemperatur</div>
+            <div class="sensor-label">${friendlyName}</div>
             <div class="sensor-value">
-              ${((_c = this.hass.states[this.config.outer_temp_entity]) === null || _c === void 0 ? void 0 : _c.state) || 'N/A'}°C
+              ${(entity === null || entity === void 0 ? void 0 : entity.state) || 'N/A'}°C
             </div>
           </div>
         </div>
       `);
         }
         if (this.config.outer_humidity_entity) {
+            const entity = this.hass.states[this.config.outer_humidity_entity];
+            const friendlyName = ((_d = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _d === void 0 ? void 0 : _d.friendly_name) || this.config.outer_humidity_entity;
             sensors.push(x `
         <div class="sensor-card">
           <div class="sensor-icon humidity">💧</div>
           <div class="sensor-info">
-            <div class="sensor-label">Außenfeuchtigkeit</div>
+            <div class="sensor-label">${friendlyName}</div>
             <div class="sensor-value">
-              ${((_d = this.hass.states[this.config.outer_humidity_entity]) === null || _d === void 0 ? void 0 : _d.state) || 'N/A'}%
+              ${(entity === null || entity === void 0 ? void 0 : entity.state) || 'N/A'}%
             </div>
           </div>
         </div>
       `);
         }
         if (this.config.leaf_temp_entity) {
+            const entity = this.hass.states[this.config.leaf_temp_entity];
+            const friendlyName = ((_e = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _e === void 0 ? void 0 : _e.friendly_name) || this.config.leaf_temp_entity;
             sensors.push(x `
         <div class="sensor-card">
           <div class="sensor-icon temp">🌡️</div>
           <div class="sensor-info">
-            <div class="sensor-label">Blatttemperatur</div>
+            <div class="sensor-label">${friendlyName}</div>
             <div class="sensor-value">
-              ${((_e = this.hass.states[this.config.leaf_temp_entity]) === null || _e === void 0 ? void 0 : _e.state) || 'N/A'}°C
+              ${(entity === null || entity === void 0 ? void 0 : entity.state) || 'N/A'}°C
             </div>
           </div>
         </div>
@@ -661,14 +671,17 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         return sensors;
     }
     renderOptionalControls() {
+        var _a, _b, _c;
         const controls = [];
         // Add controls only if configured
         if (this.config.light_entity) {
+            const entity = this.hass.states[this.config.light_entity];
+            const friendlyName = ((_a = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _a === void 0 ? void 0 : _a.friendly_name) || this.config.light_entity;
             controls.push(x `
         <div class="control-card light">
           <div class="control-icon">💡</div>
           <div class="control-info">
-            <div class="control-label">Beleuchtung</div>
+            <div class="control-label">${friendlyName}</div>
             <div class="control-value">${this.getLightBrightness()}</div>
             <div class="control-status">${this.renderStatusIndicator(this.config.light_entity)}</div>
           </div>
@@ -676,11 +689,13 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
       `);
         }
         if (this.config.ventilation_entity) {
+            const entity = this.hass.states[this.config.ventilation_entity];
+            const friendlyName = ((_b = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || this.config.ventilation_entity;
             controls.push(x `
         <div class="control-card ventilation">
           <div class="control-icon">🌀</div>
           <div class="control-info">
-            <div class="control-label">Belüftung</div>
+            <div class="control-label">${friendlyName}</div>
             <div class="control-value">${this.getDeviceStatus(this.config.ventilation_entity)}</div>
             <div class="control-status">${this.renderStatusIndicator(this.config.ventilation_entity)}</div>
           </div>
@@ -688,11 +703,13 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
       `);
         }
         if (this.config.heating_entity) {
+            const entity = this.hass.states[this.config.heating_entity];
+            const friendlyName = ((_c = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _c === void 0 ? void 0 : _c.friendly_name) || this.config.heating_entity;
             controls.push(x `
         <div class="control-card heating">
           <div class="control-icon">🔥</div>
           <div class="control-info">
-            <div class="control-label">Heizung</div>
+            <div class="control-label">${friendlyName}</div>
             <div class="control-value">${this.getDeviceStatus(this.config.heating_entity)}</div>
             <div class="control-status">${this.renderStatusIndicator(this.config.heating_entity)}</div>
           </div>
@@ -702,11 +719,14 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         // Add vents if configured
         if (this.config.vents && this.config.vents.length > 0) {
             this.config.vents.forEach(vent => {
+                var _a;
+                const entity = this.hass.states[vent.entity];
+                const friendlyName = ((_a = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _a === void 0 ? void 0 : _a.friendly_name) || vent.name || vent.entity;
                 controls.push(x `
           <div class="control-card vent">
             <div class="control-icon">💨</div>
             <div class="control-info">
-              <div class="control-label">${vent.name}</div>
+              <div class="control-label">${friendlyName}</div>
               <div class="control-value">${this.getDeviceStatus(vent.entity)}</div>
               <div class="control-status">${this.renderStatusIndicator(vent.entity)}</div>
             </div>
@@ -907,6 +927,8 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             return x ``;
         }
         const vpdData = this.calculateVPD();
+        const optionalSensors = this.renderOptionalSensors();
+        const optionalControls = this.renderOptionalControls();
         return x `
       <ha-card>
         <div class="card-header">
@@ -919,16 +941,16 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         </div>
         
         <!-- Environmental Sensors (only show configured ones) -->
-        ${this.renderOptionalSensors().length > 0 ? x `
+        ${optionalSensors.length > 0 ? x `
           <div class="sensors-grid">
-            ${this.renderOptionalSensors()}
+            ${optionalSensors}
           </div>
         ` : ''}
         
         <!-- Controls (only show configured ones) -->
-        ${this.renderOptionalControls().length > 0 ? x `
+        ${optionalControls.length > 0 ? x `
           <div class="controls-grid">
-            ${this.renderOptionalControls()}
+            ${optionalControls}
           </div>
         ` : ''}
         
