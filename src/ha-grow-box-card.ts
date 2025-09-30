@@ -584,6 +584,145 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     `;
   }
 
+  private renderOptionalSensors() {
+    const sensors = [];
+    
+    // Add environmental sensors only if configured
+    if (this.config.inner_temp_entity) {
+      sensors.push(html`
+        <div class="sensor-card">
+          <div class="sensor-icon temp">🌡️</div>
+          <div class="sensor-info">
+            <div class="sensor-label">Innentemperatur</div>
+            <div class="sensor-value">
+              ${this.hass.states[this.config.inner_temp_entity]?.state || 'N/A'}°C
+            </div>
+          </div>
+        </div>
+      `);
+    }
+    
+    if (this.config.inner_humidity_entity) {
+      sensors.push(html`
+        <div class="sensor-card">
+          <div class="sensor-icon humidity">💧</div>
+          <div class="sensor-info">
+            <div class="sensor-label">Innenfeuchtigkeit</div>
+            <div class="sensor-value">
+              ${this.hass.states[this.config.inner_humidity_entity]?.state || 'N/A'}%
+            </div>
+          </div>
+        </div>
+      `);
+    }
+    
+    if (this.config.outer_temp_entity) {
+      sensors.push(html`
+        <div class="sensor-card">
+          <div class="sensor-icon temp">🌡️</div>
+          <div class="sensor-info">
+            <div class="sensor-label">Außentemperatur</div>
+            <div class="sensor-value">
+              ${this.hass.states[this.config.outer_temp_entity]?.state || 'N/A'}°C
+            </div>
+          </div>
+        </div>
+      `);
+    }
+    
+    if (this.config.outer_humidity_entity) {
+      sensors.push(html`
+        <div class="sensor-card">
+          <div class="sensor-icon humidity">💧</div>
+          <div class="sensor-info">
+            <div class="sensor-label">Außenfeuchtigkeit</div>
+            <div class="sensor-value">
+              ${this.hass.states[this.config.outer_humidity_entity]?.state || 'N/A'}%
+            </div>
+          </div>
+        </div>
+      `);
+    }
+    
+    if (this.config.leaf_temp_entity) {
+      sensors.push(html`
+        <div class="sensor-card">
+          <div class="sensor-icon temp">🌡️</div>
+          <div class="sensor-info">
+            <div class="sensor-label">Blatttemperatur</div>
+            <div class="sensor-value">
+              ${this.hass.states[this.config.leaf_temp_entity]?.state || 'N/A'}°C
+            </div>
+          </div>
+        </div>
+      `);
+    }
+    
+    return sensors;
+  }
+
+  private renderOptionalControls() {
+    const controls = [];
+    
+    // Add controls only if configured
+    if (this.config.light_entity) {
+      controls.push(html`
+        <div class="control-card light">
+          <div class="control-icon">💡</div>
+          <div class="control-info">
+            <div class="control-label">Beleuchtung</div>
+            <div class="control-value">${this.getLightBrightness()}</div>
+            <div class="control-status">${this.renderStatusIndicator(this.config.light_entity)}</div>
+          </div>
+        </div>
+      `);
+    }
+    
+    if (this.config.ventilation_entity) {
+      controls.push(html`
+        <div class="control-card ventilation">
+          <div class="control-icon">🌀</div>
+          <div class="control-info">
+            <div class="control-label">Belüftung</div>
+            <div class="control-value">${this.getDeviceStatus(this.config.ventilation_entity)}</div>
+            <div class="control-status">${this.renderStatusIndicator(this.config.ventilation_entity)}</div>
+          </div>
+        </div>
+      `);
+    }
+    
+    if (this.config.heating_entity) {
+      controls.push(html`
+        <div class="control-card heating">
+          <div class="control-icon">🔥</div>
+          <div class="control-info">
+            <div class="control-label">Heizung</div>
+            <div class="control-value">${this.getDeviceStatus(this.config.heating_entity)}</div>
+            <div class="control-status">${this.renderStatusIndicator(this.config.heating_entity)}</div>
+          </div>
+        </div>
+      `);
+    }
+    
+    // Add vents if configured
+    if (this.config.vents && this.config.vents.length > 0) {
+      this.config.vents.forEach(vent => {
+        controls.push(html`
+          <div class="control-card vent">
+            <div class="control-icon">💨</div>
+            <div class="control-info">
+              <div class="control-label">${vent.name}</div>
+              <div class="control-value">${this.getDeviceStatus(vent.entity)}</div>
+              <div class="control-status">${this.renderStatusIndicator(vent.entity)}</div>
+            </div>
+          </div>
+        `);
+      });
+    }
+    
+    return controls;
+  }
+
   private renderPlantsGrid() {
     const plants = this.config.plants || [];
     const positions = [0, 1, 2, 3]; // For 4 plant positions
@@ -616,16 +755,34 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         }
       }
 
+      // Only show sensors that have actual data (not N/A)
+      const availableSensors = [];
+      
+      if (plantData.moisture && plantData.moisture !== 'N/A') {
+        availableSensors.push(html`<div class="sensor">💧 ${plantData.moisture}%</div>`);
+      }
+      
+      if (plantData.temp && plantData.temp !== 'N/A') {
+        availableSensors.push(html`<div class="sensor">🌡️ ${plantData.temp}°C</div>`);
+      }
+      
+      if (plantData.light && plantData.light !== 'N/A') {
+        availableSensors.push(html`<div class="sensor">☀️ ${plantData.light}</div>`);
+      }
+      
+      if (plantData.ec && plantData.ec !== 'N/A') {
+        availableSensors.push(html`<div class="sensor">🧪 ${plantData.ec}</div>`);
+      }
+
       return html`
         <div class="plant-card">
           <div class="plant-icon">🌿</div>
           <div class="plant-name">${plant.name}</div>
-          <div class="plant-sensors">
-            <div class="sensor">💧 ${plantData.moisture}%</div>
-            <div class="sensor">🌡️ ${plantData.temp}°C</div>
-            <div class="sensor">☀️ ${plantData.light}</div>
-            <div class="sensor">🧪 ${plantData.ec}</div>
-          </div>
+          ${availableSensors.length > 0 ? html`
+            <div class="plant-sensors">
+              ${availableSensors}
+            </div>
+          ` : ''}
           <div class="plant-health">
             <div class="health-bar">
               <div class="health-fill" style="width: ${plantData.health}%; background: #f44336;"></div>
@@ -786,88 +943,31 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
           ` : ''}
         </div>
         
-        <!-- Environmental Sensors -->
-        <div class="sensors-grid">
-          <div class="sensor-card">
-            <div class="sensor-icon temp">🌡️</div>
-            <div class="sensor-info">
-              <div class="sensor-label">Innentemperatur</div>
-              <div class="sensor-value">
-                ${this.config.inner_temp_entity ? (this.hass.states[this.config.inner_temp_entity]?.state || 'N/A') : 'N/A'}°C
-              </div>
-            </div>
+        <!-- Environmental Sensors (only show configured ones) -->
+        ${this.renderOptionalSensors().length > 0 ? html`
+          <div class="sensors-grid">
+            ${this.renderOptionalSensors()}
           </div>
-          
-          <div class="sensor-card">
-            <div class="sensor-icon humidity">💧</div>
-            <div class="sensor-info">
-              <div class="sensor-label">Innenfeuchtigkeit</div>
-              <div class="sensor-value">
-                ${this.config.inner_humidity_entity ? (this.hass.states[this.config.inner_humidity_entity]?.state || 'N/A') : 'N/A'}%
-              </div>
-            </div>
-          </div>
-          
-          <div class="sensor-card">
-            <div class="sensor-icon temp">🌡️</div>
-            <div class="sensor-info">
-              <div class="sensor-label">Außentemperatur</div>
-              <div class="sensor-value">
-                ${this.config.outer_temp_entity ? (this.hass.states[this.config.outer_temp_entity]?.state || 'N/A') : 'N/A'}°C
-              </div>
-            </div>
-          </div>
-          
-          <div class="sensor-card">
-            <div class="sensor-icon humidity">💧</div>
-            <div class="sensor-info">
-              <div class="sensor-label">Außenfeuchtigkeit</div>
-              <div class="sensor-value">
-                ${this.config.outer_humidity_entity ? (this.hass.states[this.config.outer_humidity_entity]?.state || 'N/A') : 'N/A'}%
-              </div>
-            </div>
-          </div>
-        </div>
+        ` : ''}
         
-        <!-- Controls -->
-        <div class="controls-grid">
-          <div class="control-card light">
-            <div class="control-icon">💡</div>
-            <div class="control-info">
-              <div class="control-label">Beleuchtung</div>
-              <div class="control-value">${this.config.light_entity ? this.getLightBrightness() : 'N/A'}</div>
-              <div class="control-status">${this.renderStatusIndicator(this.config.light_entity)}</div>
-            </div>
+        <!-- Controls (only show configured ones) -->
+        ${this.renderOptionalControls().length > 0 ? html`
+          <div class="controls-grid">
+            ${this.renderOptionalControls()}
           </div>
-          
-          <div class="control-card ventilation">
-            <div class="control-icon">🌀</div>
-            <div class="control-info">
-              <div class="control-label">Belüftung</div>
-              <div class="control-value">${this.config.ventilation_entity ? this.getDeviceStatus(this.config.ventilation_entity) : 'N/A'}</div>
-              <div class="control-status">${this.renderStatusIndicator(this.config.ventilation_entity)}</div>
-            </div>
-          </div>
-          
-          <div class="control-card heating">
-            <div class="control-icon">🔥</div>
-            <div class="control-info">
-              <div class="control-label">Heizung</div>
-              <div class="control-value">${this.config.heating_entity ? this.getDeviceStatus(this.config.heating_entity) : 'N/A'}</div>
-              <div class="control-status">${this.renderStatusIndicator(this.config.heating_entity)}</div>
-            </div>
-          </div>
-        </div>
+        ` : ''}
         
-        <!-- Grow Box Visualization -->
-        <div class="growbox-container">
-          <div class="growbox-frame">
-            <div class="frame-label">Growbox</div>
-            <div class="plants-grid">
-              ${this.renderPlantsGrid()}
+        <!-- Grow Box Visualization (only show if plants are configured) -->
+        ${this.config.plants && this.config.plants.length > 0 ? html`
+          <div class="growbox-container">
+            <div class="growbox-frame">
+              <div class="frame-label">Growbox</div>
+              <div class="plants-grid">
+                ${this.renderPlantsGrid()}
+              </div>
             </div>
           </div>
-        </div>
+        ` : ''}
         
         ${this.config.camera_entity ? html`
           <div class="camera-section">
