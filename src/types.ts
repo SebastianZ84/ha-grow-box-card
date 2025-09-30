@@ -13,15 +13,23 @@ export interface GrowBoxCardConfig extends LovelaceCardConfig {
   
   // Environmental sensors
   inner_temp_entity?: string;
+  inner_temp_icon?: string;
   inner_humidity_entity?: string;
+  inner_humidity_icon?: string;
   outer_temp_entity?: string;
+  outer_temp_icon?: string;
   outer_humidity_entity?: string;
+  outer_humidity_icon?: string;
   leaf_temp_entity?: string;
+  leaf_temp_icon?: string;
   
   // Control entities
   light_entity?: string;
+  light_icon?: string;
   heating_entity?: string;
+  heating_icon?: string;
   ventilation_entity?: string;
+  ventilation_icon?: string;
   vents?: VentConfig[];
   
   // Plant monitoring
@@ -38,6 +46,7 @@ export interface VentConfig {
   name: string;
   entity: string;
   position?: 'top' | 'side' | 'bottom';
+  icon?: string;
 }
 
 export interface PlantConfig {
@@ -45,6 +54,7 @@ export interface PlantConfig {
   entity?: string; // Optional - can use individual sensors without plant entity
   position?: number; // 1-4 for positioning in the tent
   image?: string;
+  icon?: string; // Custom plant icon
   // Individual sensor entities (like lovelace flower card)
   moisture_sensor?: string;
   temperature_sensor?: string;
