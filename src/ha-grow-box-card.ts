@@ -1054,8 +1054,8 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         <!-- Controls Section (only show configured ones) -->
         ${optionalControls.length > 0 ? html`
           <div class="controls-container">
-            <div class="controls-frame">
-              <div class="frame-label">Controls</div>
+            <div class="controls-frame" style="background: #2d2d2d; border: 2px solid #4CAF50; border-radius: 12px; padding: 16px; position: relative; margin-bottom: 16px;">
+              <div class="frame-label" style="position: absolute; top: -10px; left: 16px; background: #1a1a1a; padding: 0 8px; font-size: 12px; color: #4CAF50; font-weight: bold; z-index: 1;">Controls</div>
               <div class="controls-grid">
                 ${optionalControls}
               </div>
