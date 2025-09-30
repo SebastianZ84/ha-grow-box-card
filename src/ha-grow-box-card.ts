@@ -1181,16 +1181,20 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         color: var(--primary-text-color, #ffffff);
       }
 
-      .controls-container {
-        margin-bottom: 16px;
+      :host .controls-container {
+        margin-bottom: 16px !important;
+        display: block !important;
       }
 
-      .controls-frame {
-        background: var(--card-background-color, #2d2d2d);
-        border: 2px solid var(--primary-color, #4CAF50);
-        border-radius: 12px;
-        padding: 16px;
-        position: relative;
+      :host .controls-frame {
+        background: var(--card-background-color, #2d2d2d) !important;
+        border: 2px solid var(--primary-color, #4CAF50) !important;
+        border-radius: 12px !important;
+        padding: 16px !important;
+        position: relative !important;
+        box-sizing: border-box !important;
+        display: block !important;
+        width: 100% !important;
       }
 
       .controls-grid {
@@ -1274,15 +1278,17 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         position: relative;
       }
 
-      .frame-label {
-        position: absolute;
-        top: -10px;
-        left: 16px;
-        background: var(--ha-card-background, #1a1a1a);
-        padding: 0 8px;
-        font-size: 12px;
-        color: var(--gray800, #4CAF50);
-        font-weight: bold;
+      .controls-frame .frame-label,
+      .plants-frame .frame-label {
+        position: absolute !important;
+        top: -10px !important;
+        left: 16px !important;
+        background: var(--ha-card-background, #1a1a1a) !important;
+        padding: 0 8px !important;
+        font-size: 12px !important;
+        color: var(--primary-color, #4CAF50) !important;
+        font-weight: bold !important;
+        z-index: 1 !important;
       }
 
       .plants-grid {
