@@ -1022,6 +1022,11 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         color: var(--primary-text-color, #ffffff);
       }
 
+      /* Global ha-icon color override */
+      ha-icon {
+        color: inherit !important;
+      }
+
       .card-header {
         display: flex;
         justify-content: space-between;
@@ -1074,7 +1079,10 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
 
       .sensor-icon ha-icon {
         --mdc-icon-size: 24px;
-        color: var(--primary-color, #4CAF50);
+        color: var(--primary-color, #4CAF50) !important;
+        --mdc-icon-color: var(--primary-color, #4CAF50);
+        --ha-icon-color: var(--primary-color, #4CAF50);
+        --iron-icon-fill-color: var(--primary-color, #4CAF50);
       }
 
       .sensor-info {
@@ -1121,7 +1129,10 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
 
       .control-icon ha-icon {
         --mdc-icon-size: 32px;
-        color: var(--primary-color, #4CAF50);
+        color: var(--primary-color, #4CAF50) !important;
+        --mdc-icon-color: var(--primary-color, #4CAF50);
+        --ha-icon-color: var(--primary-color, #4CAF50);
+        --iron-icon-fill-color: var(--primary-color, #4CAF50);
       }
 
       .control-label {
@@ -1218,7 +1229,10 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
 
       .plant-icon ha-icon {
         --mdc-icon-size: 32px;
-        color: var(--primary-color, #4CAF50);
+        color: var(--primary-color, #4CAF50) !important;
+        --mdc-icon-color: var(--primary-color, #4CAF50);
+        --ha-icon-color: var(--primary-color, #4CAF50);
+        --iron-icon-fill-color: var(--primary-color, #4CAF50);
       }
 
       .plant-name {

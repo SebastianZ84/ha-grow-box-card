@@ -1047,6 +1047,11 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         color: var(--primary-text-color, #ffffff);
       }
 
+      /* Global ha-icon color override */
+      ha-icon {
+        color: inherit !important;
+      }
+
       .card-header {
         display: flex;
         justify-content: space-between;
@@ -1099,7 +1104,10 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
 
       .sensor-icon ha-icon {
         --mdc-icon-size: 24px;
-        color: var(--primary-color, #4CAF50);
+        color: var(--primary-color, #4CAF50) !important;
+        --mdc-icon-color: var(--primary-color, #4CAF50);
+        --ha-icon-color: var(--primary-color, #4CAF50);
+        --iron-icon-fill-color: var(--primary-color, #4CAF50);
       }
 
       .sensor-info {
@@ -1146,7 +1154,10 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
 
       .control-icon ha-icon {
         --mdc-icon-size: 32px;
-        color: var(--primary-color, #4CAF50);
+        color: var(--primary-color, #4CAF50) !important;
+        --mdc-icon-color: var(--primary-color, #4CAF50);
+        --ha-icon-color: var(--primary-color, #4CAF50);
+        --iron-icon-fill-color: var(--primary-color, #4CAF50);
       }
 
       .control-label {
@@ -1243,7 +1254,10 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
 
       .plant-icon ha-icon {
         --mdc-icon-size: 32px;
-        color: var(--primary-color, #4CAF50);
+        color: var(--primary-color, #4CAF50) !important;
+        --mdc-icon-color: var(--primary-color, #4CAF50);
+        --ha-icon-color: var(--primary-color, #4CAF50);
+        --iron-icon-fill-color: var(--primary-color, #4CAF50);
       }
 
       .plant-name {
