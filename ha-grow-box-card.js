@@ -977,18 +977,23 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
           </div>
         ` : ''}
         
-        <!-- Controls (only show configured ones) -->
+        <!-- Controls Section (only show configured ones) -->
         ${optionalControls.length > 0 ? x `
-          <div class="controls-grid">
-            ${optionalControls}
+          <div class="controls-container">
+            <div class="controls-frame">
+              <div class="frame-label">Controls</div>
+              <div class="controls-grid">
+                ${optionalControls}
+              </div>
+            </div>
           </div>
         ` : ''}
         
-        <!-- Grow Box Visualization (only show if plants are configured) -->
+        <!-- Plants Section (only show if plants are configured) -->
         ${this.config.plants && this.config.plants.length > 0 ? x `
-          <div class="growbox-container">
-            <div class="growbox-frame">
-              <div class="frame-label">Growbox</div>
+          <div class="plants-container">
+            <div class="plants-frame">
+              <div class="frame-label">Plants</div>
               <div class="plants-grid">
                 ${this.renderPlantsGrid()}
               </div>
@@ -1101,11 +1106,23 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         color: var(--primary-text-color, #ffffff);
       }
 
+      .controls-container {
+        margin-bottom: 16px;
+      }
+
+      .controls-frame {
+        background: var(--card-background-color, #2d2d2d);
+        border: 2px solid var(--primary-color, #4CAF50);
+        border-radius: 12px;
+        padding: 16px;
+        position: relative;
+      }
+
       .controls-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
         gap: 12px;
-        margin-bottom: 16px;
+        margin-top: 8px;
       }
 
       .control-card {
@@ -1169,11 +1186,11 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         color: #888;
       }
 
-      .growbox-container {
+      .plants-container {
         margin-bottom: 16px;
       }
 
-      .growbox-frame {
+      .plants-frame {
         background: var(--card-background-color, #2d2d2d);
         border: 2px solid var(--primary-color, #4CAF50);
         border-radius: 12px;
