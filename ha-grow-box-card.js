@@ -1074,15 +1074,15 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         display: flex;
         align-items: center;
         justify-content: center;
-        color: var(--primary-color, #4CAF50);
+        color: var(--gray800, #ffffff);
       }
 
       .sensor-icon ha-icon {
         --mdc-icon-size: 24px;
-        color: var(--primary-color, #4CAF50) !important;
-        --mdc-icon-color: var(--primary-color, #4CAF50);
-        --ha-icon-color: var(--primary-color, #4CAF50);
-        --iron-icon-fill-color: var(--primary-color, #4CAF50);
+        color: var(--gray800, #ffffff) !important;
+        --mdc-icon-color: var(--gray800, #ffffff);
+        --ha-icon-color: var(--gray800, #ffffff);
+        --iron-icon-fill-color: var(--gray800, #ffffff);
       }
 
       .sensor-info {
@@ -1124,15 +1124,15 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
       .control-icon {
         font-size: 32px;
         margin-bottom: 8px;
-        color: var(--primary-color, #4CAF50);
+        color: var(--gray800, #ffffff);
       }
 
       .control-icon ha-icon {
         --mdc-icon-size: 32px;
-        color: var(--primary-color, #4CAF50) !important;
-        --mdc-icon-color: var(--primary-color, #4CAF50);
-        --ha-icon-color: var(--primary-color, #4CAF50);
-        --iron-icon-fill-color: var(--primary-color, #4CAF50);
+        color: var(--gray800, #ffffff) !important;
+        --mdc-icon-color: var(--gray800, #ffffff);
+        --ha-icon-color: var(--gray800, #ffffff);
+        --iron-icon-fill-color: var(--gray800, #ffffff);
       }
 
       .control-label {
@@ -1224,15 +1224,15 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         font-size: 32px;
         text-align: center;
         margin-bottom: 8px;
-        color: var(--primary-color, #4CAF50);
+        color: var(--gray800, #ffffff);
       }
 
       .plant-icon ha-icon {
         --mdc-icon-size: 32px;
-        color: var(--primary-color, #4CAF50) !important;
-        --mdc-icon-color: var(--primary-color, #4CAF50);
-        --ha-icon-color: var(--primary-color, #4CAF50);
-        --iron-icon-fill-color: var(--primary-color, #4CAF50);
+        color: var(--gray800, #ffffff) !important;
+        --mdc-icon-color: var(--gray800, #ffffff);
+        --ha-icon-color: var(--gray800, #ffffff);
+        --iron-icon-fill-color: var(--gray800, #ffffff);
       }
 
       .plant-name {
