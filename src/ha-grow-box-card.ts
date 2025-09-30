@@ -477,6 +477,64 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     }
   }
 
+  private getSensorValue(entityId?: string): string {
+    if (!entityId) return 'N/A';
+    return this.hass.states[entityId]?.state || 'N/A';
+  }
+
+  private getPlantName(): string {
+    const plants = this.config.plants || [];
+    return plants[0]?.name || 'Plant 1';
+  }
+
+  private getPlantMoisture(): string {
+    const plants = this.config.plants || [];
+    const plant = plants[0];
+    if (plant?.entity) {
+      const cachedData = this.plantDataCache.get(plant.entity);
+      if (cachedData) {
+        return cachedData.moisture;
+      }
+    }
+    return '23.0';
+  }
+
+  private getPlantTemp(): string {
+    const plants = this.config.plants || [];
+    const plant = plants[0];
+    if (plant?.entity) {
+      const cachedData = this.plantDataCache.get(plant.entity);
+      if (cachedData) {
+        return cachedData.temp;
+      }
+    }
+    return '16.7';
+  }
+
+  private getPlantLight(): string {
+    const plants = this.config.plants || [];
+    const plant = plants[0];
+    if (plant?.entity) {
+      const cachedData = this.plantDataCache.get(plant.entity);
+      if (cachedData) {
+        return cachedData.light;
+      }
+    }
+    return 'OK';
+  }
+
+  private getPlantEC(): string {
+    const plants = this.config.plants || [];
+    const plant = plants[0];
+    if (plant?.entity) {
+      const cachedData = this.plantDataCache.get(plant.entity);
+      if (cachedData) {
+        return cachedData.ec;
+      }
+    }
+    return 'OK';
+  }
+
   private renderPlant(index: number, x: number, y: number) {
     const plants = this.config.plants || [];
     const plant = plants[index];
@@ -524,6 +582,59 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         </g>
       </g>
     `;
+  }
+
+  private renderPlantsGrid() {
+    const plants = this.config.plants || [];
+    const positions = [0, 1, 2, 3]; // For 4 plant positions
+
+    return positions.map(index => {
+      const plant = plants[index];
+      if (!plant) {
+        return html`
+          <div class="plant-card empty">
+            <div class="plant-icon">🌱</div>
+            <div class="plant-name">Leer</div>
+          </div>
+        `;
+      }
+
+      // Get cached data
+      let plantData = {
+        moisture: '23.0',
+        temp: '16.7',
+        light: 'OK',
+        ec: 'OK',
+        health: 30,
+        status: 'Problem'
+      };
+
+      if (plant.entity) {
+        const cachedData = this.plantDataCache.get(plant.entity);
+        if (cachedData) {
+          plantData = cachedData;
+        }
+      }
+
+      return html`
+        <div class="plant-card">
+          <div class="plant-icon">🌿</div>
+          <div class="plant-name">${plant.name}</div>
+          <div class="plant-sensors">
+            <div class="sensor">💧 ${plantData.moisture}%</div>
+            <div class="sensor">🌡️ ${plantData.temp}°C</div>
+            <div class="sensor">☀️ ${plantData.light}</div>
+            <div class="sensor">🧪 ${plantData.ec}</div>
+          </div>
+          <div class="plant-health">
+            <div class="health-bar">
+              <div class="health-fill" style="width: ${plantData.health}%; background: #f44336;"></div>
+            </div>
+            <div class="health-text">${plantData.status} - ${plantData.health}%</div>
+          </div>
+        </div>
+      `;
+    });
   }
 
   private renderPlantGrid() {
@@ -662,87 +773,110 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
       return html``;
     }
 
+    const vpdData = this.calculateVPD();
+
     return html`
       <ha-card>
-        <div class="growbox-svg">
-          <svg viewBox="0 0 400 600" xmlns="http://www.w3.org/2000/svg">
-            <!-- Card Background -->
-            <rect width="400" height="600" fill="#1a1a1a" rx="12"/>
-            
-            <!-- Header -->
-            <rect width="400" height="60" fill="#2d2d2d" rx="12"/>
-            <text x="20" y="38" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#4CAF50">
-              🌱 ${this.config.name || 'Growbox'}
-            </text>
-            
-            <!-- Temperature & Humidity Display -->
-            <g id="climate-inner">
-              <rect x="20" y="75" width="170" height="70" fill="#2d2d2d" rx="8"/>
-              <text x="30" y="95" font-family="Arial" font-size="12" fill="#888">Innen</text>
-              <text x="30" y="120" font-family="Arial" font-size="20" font-weight="bold" fill="#4CAF50">
-                ${this.config.inner_temp_entity ? (this.hass.states[this.config.inner_temp_entity]?.state || 'N/A') : 'N/A'}°C
-              </text>
-              <text x="110" y="120" font-family="Arial" font-size="20" font-weight="bold" fill="#2196F3">
-                ${this.config.inner_humidity_entity ? (this.hass.states[this.config.inner_humidity_entity]?.state || 'N/A') : 'N/A'}%
-              </text>
-              <text x="30" y="138" font-family="Arial" font-size="10" fill="#666">Temperatur</text>
-              <text x="110" y="138" font-family="Arial" font-size="10" fill="#666">Feuchtigkeit</text>
-            </g>
-            
-            <g id="climate-outer">
-              <rect x="210" y="75" width="170" height="70" fill="#2d2d2d" rx="8"/>
-              <text x="220" y="95" font-family="Arial" font-size="12" fill="#888">Außen</text>
-              <text x="220" y="120" font-family="Arial" font-size="20" font-weight="bold" fill="#FF9800">
-                ${this.config.outer_temp_entity ? (this.hass.states[this.config.outer_temp_entity]?.state || 'N/A') : 'N/A'}°C
-              </text>
-              <text x="300" y="120" font-family="Arial" font-size="20" font-weight="bold" fill="#03A9F4">
-                ${this.config.outer_humidity_entity ? (this.hass.states[this.config.outer_humidity_entity]?.state || 'N/A') : 'N/A'}%
-              </text>
-              <text x="220" y="138" font-family="Arial" font-size="10" fill="#666">Temperatur</text>
-              <text x="300" y="138" font-family="Arial" font-size="10" fill="#666">Feuchtigkeit</text>
-            </g>
-            
-            <!-- Control Section -->
-            <g id="controls">
-              <!-- Lampe (Light with Dimmer) -->
-              <rect x="20" y="160" width="170" height="90" fill="#2d2d2d" rx="8"/>
-              <circle cx="60" cy="190" r="18" fill="#FFC107" opacity="0.9"/>
-              <text x="60" y="195" font-family="Arial" font-size="20" text-anchor="middle">💡</text>
-              <text x="90" y="185" font-family="Arial" font-size="14" fill="#fff">Lampe</text>
-              <text x="90" y="203" font-family="Arial" font-size="12" fill="#888">
-                ${this.config.light_entity ? this.getLightBrightness() : 'N/A'}
-              </text>
-              <!-- Dimmer Slider -->
-              <rect x="30" y="220" width="150" height="4" fill="#444" rx="2"/>
-              <rect x="30" y="220" width="${this.getLightSliderWidth()}" height="4" fill="#FFC107" rx="2"/>
-              <circle cx="${30 + this.getLightSliderWidth()}" cy="222" r="8" fill="#FFC107"/>
-            </g>
-            
-            <g id="ventilation">
-              <!-- Abluft (Exhaust) -->
-              <rect x="210" y="160" width="80" height="90" fill="#2d2d2d" rx="8"/>
-              <circle cx="250" cy="190" r="18" fill="#00BCD4" opacity="0.8"/>
-              <text x="250" y="197" font-family="Arial" font-size="22" text-anchor="middle">🌀</text>
-              <text x="250" y="218" font-family="Arial" font-size="11" fill="#fff" text-anchor="middle">Abluft</text>
-              <text x="250" y="235" font-family="Arial" font-size="13" fill="#00BCD4" text-anchor="middle">
-                ${this.config.ventilation_entity ? this.getDeviceStatus(this.config.ventilation_entity) : 'N/A'}
-              </text>
-              
-              <!-- Vents -->
-              <rect x="300" y="160" width="80" height="90" fill="#2d2d2d" rx="8"/>
-              <circle cx="340" cy="190" r="18" fill="#9C27B0" opacity="0.8"/>
-              <text x="340" y="197" font-family="Arial" font-size="22" text-anchor="middle">💨</text>
-              <text x="340" y="218" font-family="Arial" font-size="11" fill="#fff" text-anchor="middle">Vents</text>
-              <text x="340" y="235" font-family="Arial" font-size="13" fill="#9C27B0" text-anchor="middle">AN</text>
-            </g>
-            
-            <!-- Growbox Schema -->
-            <rect x="20" y="265" width="360" height="315" fill="#1a1a1a" stroke="#4CAF50" stroke-width="2" rx="8"/>
-            
-            <!-- Plant 1 (Top Left) - Direct SVG with real data -->
-            ${this.renderPlant(0, 40, 300)}
-          </svg>
+        <div class="card-header">
+          <h2 class="card-title">🌱 ${this.config.name || 'Growbox'}</h2>
+          ${this.config.vpd_calculation?.enabled ? html`
+            <div class="vpd-indicator" style="background-color: ${vpdData.color}">
+              VPD: ${vpdData.vpd.toFixed(2)} - ${vpdData.phase}
+            </div>
+          ` : ''}
         </div>
+        
+        <!-- Environmental Sensors -->
+        <div class="sensors-grid">
+          <div class="sensor-card">
+            <div class="sensor-icon temp">🌡️</div>
+            <div class="sensor-info">
+              <div class="sensor-label">Innentemperatur</div>
+              <div class="sensor-value">
+                ${this.config.inner_temp_entity ? (this.hass.states[this.config.inner_temp_entity]?.state || 'N/A') : 'N/A'}°C
+              </div>
+            </div>
+          </div>
+          
+          <div class="sensor-card">
+            <div class="sensor-icon humidity">💧</div>
+            <div class="sensor-info">
+              <div class="sensor-label">Innenfeuchtigkeit</div>
+              <div class="sensor-value">
+                ${this.config.inner_humidity_entity ? (this.hass.states[this.config.inner_humidity_entity]?.state || 'N/A') : 'N/A'}%
+              </div>
+            </div>
+          </div>
+          
+          <div class="sensor-card">
+            <div class="sensor-icon temp">🌡️</div>
+            <div class="sensor-info">
+              <div class="sensor-label">Außentemperatur</div>
+              <div class="sensor-value">
+                ${this.config.outer_temp_entity ? (this.hass.states[this.config.outer_temp_entity]?.state || 'N/A') : 'N/A'}°C
+              </div>
+            </div>
+          </div>
+          
+          <div class="sensor-card">
+            <div class="sensor-icon humidity">💧</div>
+            <div class="sensor-info">
+              <div class="sensor-label">Außenfeuchtigkeit</div>
+              <div class="sensor-value">
+                ${this.config.outer_humidity_entity ? (this.hass.states[this.config.outer_humidity_entity]?.state || 'N/A') : 'N/A'}%
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Controls -->
+        <div class="controls-grid">
+          <div class="control-card light">
+            <div class="control-icon">💡</div>
+            <div class="control-info">
+              <div class="control-label">Beleuchtung</div>
+              <div class="control-value">${this.config.light_entity ? this.getLightBrightness() : 'N/A'}</div>
+              <div class="control-status">${this.renderStatusIndicator(this.config.light_entity)}</div>
+            </div>
+          </div>
+          
+          <div class="control-card ventilation">
+            <div class="control-icon">🌀</div>
+            <div class="control-info">
+              <div class="control-label">Belüftung</div>
+              <div class="control-value">${this.config.ventilation_entity ? this.getDeviceStatus(this.config.ventilation_entity) : 'N/A'}</div>
+              <div class="control-status">${this.renderStatusIndicator(this.config.ventilation_entity)}</div>
+            </div>
+          </div>
+          
+          <div class="control-card heating">
+            <div class="control-icon">🔥</div>
+            <div class="control-info">
+              <div class="control-label">Heizung</div>
+              <div class="control-value">${this.config.heating_entity ? this.getDeviceStatus(this.config.heating_entity) : 'N/A'}</div>
+              <div class="control-status">${this.renderStatusIndicator(this.config.heating_entity)}</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Grow Box Visualization -->
+        <div class="growbox-container">
+          <div class="growbox-frame">
+            <div class="frame-label">Growbox</div>
+            <div class="plants-grid">
+              ${this.renderPlantsGrid()}
+            </div>
+          </div>
+        </div>
+        
+        ${this.config.camera_entity ? html`
+          <div class="camera-section">
+            <div class="camera-header">📹 Kamera</div>
+            <div class="camera-container">
+              <img src="/api/camera_proxy/${this.config.camera_entity}" alt="Grow Box Camera" />
+            </div>
+          </div>
+        ` : ''}
       </ha-card>
     `;
   }
@@ -755,29 +889,283 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
       }
 
       ha-card {
-        background: transparent;
-        box-shadow: none;
-        border: none;
+        background: var(--ha-card-background, #1a1a1a);
+        border: 1px solid var(--divider-color, #2d2d2d);
+        border-radius: 12px;
+        padding: 16px;
+        color: var(--primary-text-color, #ffffff);
+      }
+
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--divider-color, #2d2d2d);
+      }
+
+      .card-title {
+        margin: 0;
+        font-size: 24px;
+        font-weight: bold;
+        color: var(--primary-color, #4CAF50);
+      }
+
+      .vpd-indicator {
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: bold;
+        color: white;
+      }
+
+      .sensors-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .sensor-card {
+        background: var(--card-background-color, #2d2d2d);
+        border-radius: 8px;
+        padding: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .sensor-icon {
+        font-size: 24px;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+      }
+
+      .sensor-icon.temp {
+        background: linear-gradient(135deg, #FF5722, #FF9800);
+      }
+
+      .sensor-icon.humidity {
+        background: linear-gradient(135deg, #2196F3, #03A9F4);
+      }
+
+      .sensor-info {
+        flex: 1;
+      }
+
+      .sensor-label {
+        font-size: 12px;
+        color: var(--secondary-text-color, #888);
+        margin-bottom: 4px;
+      }
+
+      .sensor-value {
+        font-size: 18px;
+        font-weight: bold;
+        color: var(--primary-text-color, #ffffff);
+      }
+
+      .controls-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .control-card {
+        background: var(--card-background-color, #2d2d2d);
+        border-radius: 8px;
+        padding: 12px;
+        text-align: center;
+        transition: all 0.3s ease;
+      }
+
+      .control-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      }
+
+      .control-icon {
+        font-size: 32px;
+        margin-bottom: 8px;
+      }
+
+      .control-label {
+        font-size: 12px;
+        color: var(--secondary-text-color, #888);
+        margin-bottom: 4px;
+      }
+
+      .control-value {
+        font-size: 14px;
+        font-weight: bold;
+        color: var(--primary-text-color, #ffffff);
+        margin-bottom: 4px;
+      }
+
+      .control-status {
+        font-size: 12px;
+      }
+
+      .status-indicator {
+        display: inline-block;
+        font-weight: bold;
+      }
+
+      .status-indicator.on {
+        color: #4CAF50;
+      }
+
+      .status-indicator.off {
+        color: #f44336;
+      }
+
+      .status-indicator.unknown {
+        color: #888;
+      }
+
+      .growbox-container {
+        margin-bottom: 16px;
+      }
+
+      .growbox-frame {
+        background: var(--card-background-color, #2d2d2d);
+        border: 2px solid var(--primary-color, #4CAF50);
+        border-radius: 12px;
+        padding: 16px;
+        position: relative;
+      }
+
+      .frame-label {
+        position: absolute;
+        top: -10px;
+        left: 16px;
+        background: var(--ha-card-background, #1a1a1a);
+        padding: 0 8px;
+        font-size: 12px;
+        color: var(--primary-color, #4CAF50);
+        font-weight: bold;
+      }
+
+      .plants-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-top: 8px;
+      }
+
+      .plant-card {
+        background: var(--card-background-color, #2d2d2d);
+        border-radius: 8px;
+        padding: 12px;
+        border: 1px solid rgba(76, 175, 80, 0.3);
+        transition: all 0.3s ease;
+        min-height: 140px;
+      }
+
+      .plant-card:hover {
+        border-color: var(--primary-color, #4CAF50);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+      }
+
+      .plant-card.empty {
+        border-style: dashed;
+        border-color: #555;
+        opacity: 0.6;
+      }
+
+      .plant-icon {
+        font-size: 32px;
+        text-align: center;
+        margin-bottom: 8px;
+      }
+
+      .plant-name {
+        font-size: 14px;
+        font-weight: bold;
+        color: var(--primary-color, #4CAF50);
+        text-align: center;
+        margin-bottom: 12px;
+      }
+
+      .plant-sensors {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+        margin-bottom: 12px;
+      }
+
+      .sensor {
+        font-size: 10px;
+        color: var(--secondary-text-color, #888);
+        white-space: nowrap;
+      }
+
+      .plant-health {
+        margin-top: auto;
+      }
+
+      .health-bar {
+        background: #444;
+        border-radius: 3px;
+        height: 6px;
+        margin-bottom: 4px;
         overflow: hidden;
       }
 
-      .growbox-svg {
-        width: 100%;
-        height: auto;
-        max-width: 400px;
-        margin: 0 auto;
+      .health-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.3s ease;
       }
 
-      .growbox-svg svg {
+      .health-text {
+        font-size: 9px;
+        text-align: center;
+        font-weight: bold;
+      }
+
+      .camera-section {
+        margin-top: 16px;
+      }
+
+      .camera-header {
+        font-size: 14px;
+        font-weight: bold;
+        color: var(--primary-color, #4CAF50);
+        margin-bottom: 8px;
+      }
+
+      .camera-container {
+        border-radius: 8px;
+        overflow: hidden;
+        background: #000;
+      }
+
+      .camera-container img {
         width: 100%;
         height: auto;
         display: block;
       }
 
-      /* Make SVG responsive */
+      /* Responsive design */
       @media (max-width: 600px) {
-        .growbox-svg {
-          max-width: 100%;
+        .sensors-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .controls-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .plants-grid {
+          grid-template-columns: 1fr;
         }
       }
     `;
