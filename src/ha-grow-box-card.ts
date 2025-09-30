@@ -482,6 +482,56 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     return this.hass.states[entityId]?.state || 'N/A';
   }
 
+  private handleControlClick(entityId: string): void {
+    if (!this.hass || !entityId) return;
+
+    const entity = this.hass.states[entityId];
+    if (!entity) return;
+
+    // Determine service based on entity domain
+    const domain = entityId.split('.')[0];
+    const isOn = entity.state === 'on' || entity.state === 'heat' || entity.state === 'cool' || parseFloat(entity.state) > 0;
+    
+    let service: string;
+    let serviceData: any = { entity_id: entityId };
+
+    switch (domain) {
+      case 'light':
+        service = isOn ? 'light.turn_off' : 'light.turn_on';
+        break;
+      case 'switch':
+        service = isOn ? 'switch.turn_off' : 'switch.turn_on';
+        break;
+      case 'fan':
+        service = isOn ? 'fan.turn_off' : 'fan.turn_on';
+        break;
+      case 'climate':
+        // For climate entities, toggle between off and heat/cool
+        if (entity.state === 'off') {
+          service = 'climate.set_hvac_mode';
+          serviceData.hvac_mode = 'heat'; // Default to heat mode
+        } else {
+          service = 'climate.set_hvac_mode';
+          serviceData.hvac_mode = 'off';
+        }
+        break;
+      case 'cover':
+        // For covers/vents, toggle open/close
+        service = entity.state === 'open' ? 'cover.close_cover' : 'cover.open_cover';
+        break;
+      default:
+        // Generic toggle for other entities
+        service = `${domain}.toggle`;
+        break;
+    }
+
+    console.log(`Calling service: ${service} with data:`, serviceData);
+    
+    this.hass.callService(service.split('.')[0], service.split('.')[1], serviceData).catch(error => {
+      console.error('Error calling service:', error);
+    });
+  }
+
   private getPlantName(): string {
     const plants = this.config.plants || [];
     return plants[0]?.name || 'Plant 1';
@@ -695,7 +745,7 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
       const friendlyName = entity?.attributes?.friendly_name || this.config.light_entity;
       const icon = this.config.light_icon || 'mdi:lightbulb';
       controls.push(html`
-        <div class="control-card light">
+        <div class="control-card light" @click="${() => this.handleControlClick(this.config.light_entity!)}">
           <div class="control-icon">
             ${icon.startsWith('mdi:') ? html`<ha-icon icon="${icon}"></ha-icon>` : icon}
           </div>
@@ -713,7 +763,7 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
       const friendlyName = entity?.attributes?.friendly_name || this.config.ventilation_entity;
       const icon = this.config.ventilation_icon || 'mdi:fan';
       controls.push(html`
-        <div class="control-card ventilation">
+        <div class="control-card ventilation" @click="${() => this.handleControlClick(this.config.ventilation_entity!)}">
           <div class="control-icon">
             ${icon.startsWith('mdi:') ? html`<ha-icon icon="${icon}"></ha-icon>` : icon}
           </div>
@@ -731,7 +781,7 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
       const friendlyName = entity?.attributes?.friendly_name || this.config.heating_entity;
       const icon = this.config.heating_icon || 'mdi:radiator';
       controls.push(html`
-        <div class="control-card heating">
+        <div class="control-card heating" @click="${() => this.handleControlClick(this.config.heating_entity!)}">
           <div class="control-icon">
             ${icon.startsWith('mdi:') ? html`<ha-icon icon="${icon}"></ha-icon>` : icon}
           </div>
@@ -751,7 +801,7 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         const friendlyName = entity?.attributes?.friendly_name || vent.name || vent.entity;
         const icon = vent.icon || 'mdi:air-filter';
         controls.push(html`
-          <div class="control-card vent">
+          <div class="control-card vent" @click="${() => this.handleControlClick(vent.entity)}">
             <div class="control-icon">
             ${icon.startsWith('mdi:') ? html`<ha-icon icon="${icon}"></ha-icon>` : icon}
           </div>
@@ -1156,6 +1206,7 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         padding: 12px;
         text-align: center;
         transition: all 0.3s ease;
+        cursor: pointer;
       }
 
       .control-card:hover {
@@ -1230,7 +1281,7 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         background: var(--ha-card-background, #1a1a1a);
         padding: 0 8px;
         font-size: 12px;
-        color: var(--primary-color, #4CAF50);
+        color: var(--gray800, #4CAF50);
         font-weight: bold;
       }
 
