@@ -591,10 +591,12 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     if (this.config.inner_temp_entity) {
       const entity = this.hass.states[this.config.inner_temp_entity];
       const friendlyName = entity?.attributes?.friendly_name || this.config.inner_temp_entity;
-      const icon = this.config.inner_temp_icon || '🌡️';
+      const icon = this.config.inner_temp_icon || 'mdi:thermometer';
       sensors.push(html`
         <div class="sensor-card">
-          <div class="sensor-icon temp">${icon}</div>
+          <div class="sensor-icon">
+            ${icon.startsWith('mdi:') ? html`<ha-icon icon="${icon}"></ha-icon>` : icon}
+          </div>
           <div class="sensor-info">
             <div class="sensor-label">${friendlyName}</div>
             <div class="sensor-value">
@@ -608,10 +610,12 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     if (this.config.inner_humidity_entity) {
       const entity = this.hass.states[this.config.inner_humidity_entity];
       const friendlyName = entity?.attributes?.friendly_name || this.config.inner_humidity_entity;
-      const icon = this.config.inner_humidity_icon || '💧';
+      const icon = this.config.inner_humidity_icon || 'mdi:water-percent';
       sensors.push(html`
         <div class="sensor-card">
-          <div class="sensor-icon humidity">${icon}</div>
+          <div class="sensor-icon">
+            ${icon.startsWith('mdi:') ? html`<ha-icon icon="${icon}"></ha-icon>` : icon}
+          </div>
           <div class="sensor-info">
             <div class="sensor-label">${friendlyName}</div>
             <div class="sensor-value">
@@ -625,10 +629,12 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     if (this.config.outer_temp_entity) {
       const entity = this.hass.states[this.config.outer_temp_entity];
       const friendlyName = entity?.attributes?.friendly_name || this.config.outer_temp_entity;
-      const icon = this.config.outer_temp_icon || '🌡️';
+      const icon = this.config.outer_temp_icon || 'mdi:thermometer-minus';
       sensors.push(html`
         <div class="sensor-card">
-          <div class="sensor-icon temp">${icon}</div>
+          <div class="sensor-icon">
+            ${icon.startsWith('mdi:') ? html`<ha-icon icon="${icon}"></ha-icon>` : icon}
+          </div>
           <div class="sensor-info">
             <div class="sensor-label">${friendlyName}</div>
             <div class="sensor-value">
@@ -642,10 +648,12 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     if (this.config.outer_humidity_entity) {
       const entity = this.hass.states[this.config.outer_humidity_entity];
       const friendlyName = entity?.attributes?.friendly_name || this.config.outer_humidity_entity;
-      const icon = this.config.outer_humidity_icon || '💧';
+      const icon = this.config.outer_humidity_icon || 'mdi:water-percent';
       sensors.push(html`
         <div class="sensor-card">
-          <div class="sensor-icon humidity">${icon}</div>
+          <div class="sensor-icon">
+            ${icon.startsWith('mdi:') ? html`<ha-icon icon="${icon}"></ha-icon>` : icon}
+          </div>
           <div class="sensor-info">
             <div class="sensor-label">${friendlyName}</div>
             <div class="sensor-value">
@@ -659,10 +667,12 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     if (this.config.leaf_temp_entity) {
       const entity = this.hass.states[this.config.leaf_temp_entity];
       const friendlyName = entity?.attributes?.friendly_name || this.config.leaf_temp_entity;
-      const icon = this.config.leaf_temp_icon || '🌡️';
+      const icon = this.config.leaf_temp_icon || 'mdi:leaf';
       sensors.push(html`
         <div class="sensor-card">
-          <div class="sensor-icon temp">${icon}</div>
+          <div class="sensor-icon">
+            ${icon.startsWith('mdi:') ? html`<ha-icon icon="${icon}"></ha-icon>` : icon}
+          </div>
           <div class="sensor-info">
             <div class="sensor-label">${friendlyName}</div>
             <div class="sensor-value">
@@ -683,10 +693,12 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     if (this.config.light_entity) {
       const entity = this.hass.states[this.config.light_entity];
       const friendlyName = entity?.attributes?.friendly_name || this.config.light_entity;
-      const icon = this.config.light_icon || '💡';
+      const icon = this.config.light_icon || 'mdi:lightbulb';
       controls.push(html`
         <div class="control-card light">
-          <div class="control-icon">${icon}</div>
+          <div class="control-icon">
+            ${icon.startsWith('mdi:') ? html`<ha-icon icon="${icon}"></ha-icon>` : icon}
+          </div>
           <div class="control-info">
             <div class="control-label">${friendlyName}</div>
             <div class="control-value">${this.getLightBrightness()}</div>
@@ -699,10 +711,12 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     if (this.config.ventilation_entity) {
       const entity = this.hass.states[this.config.ventilation_entity];
       const friendlyName = entity?.attributes?.friendly_name || this.config.ventilation_entity;
-      const icon = this.config.ventilation_icon || '🌀';
+      const icon = this.config.ventilation_icon || 'mdi:fan';
       controls.push(html`
         <div class="control-card ventilation">
-          <div class="control-icon">${icon}</div>
+          <div class="control-icon">
+            ${icon.startsWith('mdi:') ? html`<ha-icon icon="${icon}"></ha-icon>` : icon}
+          </div>
           <div class="control-info">
             <div class="control-label">${friendlyName}</div>
             <div class="control-value">${this.getDeviceStatus(this.config.ventilation_entity)}</div>
@@ -715,10 +729,12 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     if (this.config.heating_entity) {
       const entity = this.hass.states[this.config.heating_entity];
       const friendlyName = entity?.attributes?.friendly_name || this.config.heating_entity;
-      const icon = this.config.heating_icon || '🔥';
+      const icon = this.config.heating_icon || 'mdi:radiator';
       controls.push(html`
         <div class="control-card heating">
-          <div class="control-icon">${icon}</div>
+          <div class="control-icon">
+            ${icon.startsWith('mdi:') ? html`<ha-icon icon="${icon}"></ha-icon>` : icon}
+          </div>
           <div class="control-info">
             <div class="control-label">${friendlyName}</div>
             <div class="control-value">${this.getDeviceStatus(this.config.heating_entity)}</div>
@@ -733,10 +749,12 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
       this.config.vents.forEach(vent => {
         const entity = this.hass.states[vent.entity];
         const friendlyName = entity?.attributes?.friendly_name || vent.name || vent.entity;
-        const icon = vent.icon || '💨';
+        const icon = vent.icon || 'mdi:air-filter';
         controls.push(html`
           <div class="control-card vent">
-            <div class="control-icon">${icon}</div>
+            <div class="control-icon">
+            ${icon.startsWith('mdi:') ? html`<ha-icon icon="${icon}"></ha-icon>` : icon}
+          </div>
             <div class="control-info">
               <div class="control-label">${friendlyName}</div>
               <div class="control-value">${this.getDeviceStatus(vent.entity)}</div>
@@ -801,11 +819,13 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         availableSensors.push(html`<div class="sensor">🧪 ${plantData.ec}</div>`);
       }
 
-      const plantIcon = plant.icon || '🌿';
+      const plantIcon = plant.icon || 'mdi:cannabis';
       
       return html`
         <div class="plant-card">
-          <div class="plant-icon">${plantIcon}</div>
+          <div class="plant-icon">
+            ${plantIcon.startsWith('mdi:') ? html`<ha-icon icon="${plantIcon}"></ha-icon>` : plantIcon}
+          </div>
           <div class="plant-name">${plant.name}</div>
           ${availableSensors.length > 0 ? html`
             <div class="plant-sensors">
@@ -1074,15 +1094,12 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 50%;
+        color: var(--primary-color, #4CAF50);
       }
 
-      .sensor-icon.temp {
-        background: linear-gradient(135deg, #FF5722, #FF9800);
-      }
-
-      .sensor-icon.humidity {
-        background: linear-gradient(135deg, #2196F3, #03A9F4);
+      .sensor-icon ha-icon {
+        --mdc-icon-size: 24px;
+        color: var(--primary-color, #4CAF50);
       }
 
       .sensor-info {
@@ -1124,6 +1141,12 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
       .control-icon {
         font-size: 32px;
         margin-bottom: 8px;
+        color: var(--primary-color, #4CAF50);
+      }
+
+      .control-icon ha-icon {
+        --mdc-icon-size: 32px;
+        color: var(--primary-color, #4CAF50);
       }
 
       .control-label {
@@ -1215,6 +1238,12 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         font-size: 32px;
         text-align: center;
         margin-bottom: 8px;
+        color: var(--primary-color, #4CAF50);
+      }
+
+      .plant-icon ha-icon {
+        --mdc-icon-size: 32px;
+        color: var(--primary-color, #4CAF50);
       }
 
       .plant-name {

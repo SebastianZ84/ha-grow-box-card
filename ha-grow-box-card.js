@@ -596,10 +596,12 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         if (this.config.inner_temp_entity) {
             const entity = this.hass.states[this.config.inner_temp_entity];
             const friendlyName = ((_a = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _a === void 0 ? void 0 : _a.friendly_name) || this.config.inner_temp_entity;
-            const icon = this.config.inner_temp_icon || '🌡️';
+            const icon = this.config.inner_temp_icon || 'mdi:thermometer';
             sensors.push(x `
         <div class="sensor-card">
-          <div class="sensor-icon temp">${icon}</div>
+          <div class="sensor-icon">
+            ${icon.startsWith('mdi:') ? x `<ha-icon icon="${icon}"></ha-icon>` : icon}
+          </div>
           <div class="sensor-info">
             <div class="sensor-label">${friendlyName}</div>
             <div class="sensor-value">
@@ -612,10 +614,12 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         if (this.config.inner_humidity_entity) {
             const entity = this.hass.states[this.config.inner_humidity_entity];
             const friendlyName = ((_b = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || this.config.inner_humidity_entity;
-            const icon = this.config.inner_humidity_icon || '💧';
+            const icon = this.config.inner_humidity_icon || 'mdi:water-percent';
             sensors.push(x `
         <div class="sensor-card">
-          <div class="sensor-icon humidity">${icon}</div>
+          <div class="sensor-icon">
+            ${icon.startsWith('mdi:') ? x `<ha-icon icon="${icon}"></ha-icon>` : icon}
+          </div>
           <div class="sensor-info">
             <div class="sensor-label">${friendlyName}</div>
             <div class="sensor-value">
@@ -628,10 +632,12 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         if (this.config.outer_temp_entity) {
             const entity = this.hass.states[this.config.outer_temp_entity];
             const friendlyName = ((_c = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _c === void 0 ? void 0 : _c.friendly_name) || this.config.outer_temp_entity;
-            const icon = this.config.outer_temp_icon || '🌡️';
+            const icon = this.config.outer_temp_icon || 'mdi:thermometer-minus';
             sensors.push(x `
         <div class="sensor-card">
-          <div class="sensor-icon temp">${icon}</div>
+          <div class="sensor-icon">
+            ${icon.startsWith('mdi:') ? x `<ha-icon icon="${icon}"></ha-icon>` : icon}
+          </div>
           <div class="sensor-info">
             <div class="sensor-label">${friendlyName}</div>
             <div class="sensor-value">
@@ -644,10 +650,12 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         if (this.config.outer_humidity_entity) {
             const entity = this.hass.states[this.config.outer_humidity_entity];
             const friendlyName = ((_d = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _d === void 0 ? void 0 : _d.friendly_name) || this.config.outer_humidity_entity;
-            const icon = this.config.outer_humidity_icon || '💧';
+            const icon = this.config.outer_humidity_icon || 'mdi:water-percent';
             sensors.push(x `
         <div class="sensor-card">
-          <div class="sensor-icon humidity">${icon}</div>
+          <div class="sensor-icon">
+            ${icon.startsWith('mdi:') ? x `<ha-icon icon="${icon}"></ha-icon>` : icon}
+          </div>
           <div class="sensor-info">
             <div class="sensor-label">${friendlyName}</div>
             <div class="sensor-value">
@@ -660,10 +668,12 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         if (this.config.leaf_temp_entity) {
             const entity = this.hass.states[this.config.leaf_temp_entity];
             const friendlyName = ((_e = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _e === void 0 ? void 0 : _e.friendly_name) || this.config.leaf_temp_entity;
-            const icon = this.config.leaf_temp_icon || '🌡️';
+            const icon = this.config.leaf_temp_icon || 'mdi:leaf';
             sensors.push(x `
         <div class="sensor-card">
-          <div class="sensor-icon temp">${icon}</div>
+          <div class="sensor-icon">
+            ${icon.startsWith('mdi:') ? x `<ha-icon icon="${icon}"></ha-icon>` : icon}
+          </div>
           <div class="sensor-info">
             <div class="sensor-label">${friendlyName}</div>
             <div class="sensor-value">
@@ -682,10 +692,12 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         if (this.config.light_entity) {
             const entity = this.hass.states[this.config.light_entity];
             const friendlyName = ((_a = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _a === void 0 ? void 0 : _a.friendly_name) || this.config.light_entity;
-            const icon = this.config.light_icon || '💡';
+            const icon = this.config.light_icon || 'mdi:lightbulb';
             controls.push(x `
         <div class="control-card light">
-          <div class="control-icon">${icon}</div>
+          <div class="control-icon">
+            ${icon.startsWith('mdi:') ? x `<ha-icon icon="${icon}"></ha-icon>` : icon}
+          </div>
           <div class="control-info">
             <div class="control-label">${friendlyName}</div>
             <div class="control-value">${this.getLightBrightness()}</div>
@@ -697,10 +709,12 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         if (this.config.ventilation_entity) {
             const entity = this.hass.states[this.config.ventilation_entity];
             const friendlyName = ((_b = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || this.config.ventilation_entity;
-            const icon = this.config.ventilation_icon || '🌀';
+            const icon = this.config.ventilation_icon || 'mdi:fan';
             controls.push(x `
         <div class="control-card ventilation">
-          <div class="control-icon">${icon}</div>
+          <div class="control-icon">
+            ${icon.startsWith('mdi:') ? x `<ha-icon icon="${icon}"></ha-icon>` : icon}
+          </div>
           <div class="control-info">
             <div class="control-label">${friendlyName}</div>
             <div class="control-value">${this.getDeviceStatus(this.config.ventilation_entity)}</div>
@@ -712,10 +726,12 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         if (this.config.heating_entity) {
             const entity = this.hass.states[this.config.heating_entity];
             const friendlyName = ((_c = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _c === void 0 ? void 0 : _c.friendly_name) || this.config.heating_entity;
-            const icon = this.config.heating_icon || '🔥';
+            const icon = this.config.heating_icon || 'mdi:radiator';
             controls.push(x `
         <div class="control-card heating">
-          <div class="control-icon">${icon}</div>
+          <div class="control-icon">
+            ${icon.startsWith('mdi:') ? x `<ha-icon icon="${icon}"></ha-icon>` : icon}
+          </div>
           <div class="control-info">
             <div class="control-label">${friendlyName}</div>
             <div class="control-value">${this.getDeviceStatus(this.config.heating_entity)}</div>
@@ -730,10 +746,12 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
                 var _a;
                 const entity = this.hass.states[vent.entity];
                 const friendlyName = ((_a = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _a === void 0 ? void 0 : _a.friendly_name) || vent.name || vent.entity;
-                const icon = vent.icon || '💨';
+                const icon = vent.icon || 'mdi:air-filter';
                 controls.push(x `
           <div class="control-card vent">
-            <div class="control-icon">${icon}</div>
+            <div class="control-icon">
+            ${icon.startsWith('mdi:') ? x `<ha-icon icon="${icon}"></ha-icon>` : icon}
+          </div>
             <div class="control-info">
               <div class="control-label">${friendlyName}</div>
               <div class="control-value">${this.getDeviceStatus(vent.entity)}</div>
@@ -787,10 +805,12 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             if (plantData.ec && plantData.ec !== 'N/A') {
                 availableSensors.push(x `<div class="sensor">🧪 ${plantData.ec}</div>`);
             }
-            const plantIcon = plant.icon || '🌿';
+            const plantIcon = plant.icon || 'mdi:cannabis';
             return x `
         <div class="plant-card">
-          <div class="plant-icon">${plantIcon}</div>
+          <div class="plant-icon">
+            ${plantIcon.startsWith('mdi:') ? x `<ha-icon icon="${plantIcon}"></ha-icon>` : plantIcon}
+          </div>
           <div class="plant-name">${plant.name}</div>
           ${availableSensors.length > 0 ? x `
             <div class="plant-sensors">
@@ -1049,15 +1069,12 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 50%;
+        color: var(--primary-color, #4CAF50);
       }
 
-      .sensor-icon.temp {
-        background: linear-gradient(135deg, #FF5722, #FF9800);
-      }
-
-      .sensor-icon.humidity {
-        background: linear-gradient(135deg, #2196F3, #03A9F4);
+      .sensor-icon ha-icon {
+        --mdc-icon-size: 24px;
+        color: var(--primary-color, #4CAF50);
       }
 
       .sensor-info {
@@ -1099,6 +1116,12 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
       .control-icon {
         font-size: 32px;
         margin-bottom: 8px;
+        color: var(--primary-color, #4CAF50);
+      }
+
+      .control-icon ha-icon {
+        --mdc-icon-size: 32px;
+        color: var(--primary-color, #4CAF50);
       }
 
       .control-label {
@@ -1190,6 +1213,12 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         font-size: 32px;
         text-align: center;
         margin-bottom: 8px;
+        color: var(--primary-color, #4CAF50);
+      }
+
+      .plant-icon ha-icon {
+        --mdc-icon-size: 32px;
+        color: var(--primary-color, #4CAF50);
       }
 
       .plant-name {
