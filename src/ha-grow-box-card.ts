@@ -894,16 +894,74 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     return iconMap[sensorType] || 'mdi:chart-line';
   }
 
+  private getPlantSensorDebug(plantEntity: any, sensorType: string): string {
+    console.log(`\n=== Debugging sensor: ${sensorType} for ${plantEntity.entity_id} ===`);
+    console.log('Plant attributes:', Object.keys(plantEntity.attributes));
+    console.log('Full attributes:', plantEntity.attributes);
+    
+    // Check sensor entity reference
+    const sensorEntityId = plantEntity.attributes.sensors?.[sensorType];
+    if (sensorEntityId && this.hass.states[sensorEntityId]) {
+      console.log(`Found sensor entity: ${sensorEntityId} = ${this.hass.states[sensorEntityId].state}`);
+      return this.hass.states[sensorEntityId].state;
+    }
+    
+    // Check direct attribute
+    const directValue = plantEntity.attributes[sensorType];
+    if (directValue !== undefined && directValue !== null) {
+      console.log(`Found direct attribute: ${sensorType} = ${directValue}`);
+      return directValue.toString();
+    }
+    
+    // Check alternative names
+    const alternativeNames: { [key: string]: string[] } = {
+      'moisture': ['soil_moisture', 'moisture_level', 'moisture'],
+      'illuminance': ['light_intensity', 'light', 'brightness', 'illuminance', 'lux'],
+      'temperature': ['temp', 'temperature'],
+      'conductivity': ['electrical_conductivity', 'ec', 'conductivity', 'fertility'],
+      'humidity': ['humidity', 'relative_humidity', 'rh'],
+      'dli': ['dli', 'daily_light_integral', 'light_integral']
+    };
+    
+    const alternatives = alternativeNames[sensorType] || [];
+    for (const altName of alternatives) {
+      const altValue = plantEntity.attributes[altName];
+      if (altValue !== undefined && altValue !== null) {
+        console.log(`Found alternative attribute: ${altName} = ${altValue}`);
+        return altValue.toString();
+      }
+    }
+    
+    console.log(`No value found for ${sensorType}`);
+    return 'N/A';
+  }
+
   private renderFlowerCardAttribute(sensorType: string, plantEntity: any, plantConfig: any): TemplateResult {
     const icon = this.getSensorIcon(sensorType);
     
-    // Get current value and limits from plant entity
-    const current = parseFloat(this.getPlantSensorValueSync(plantEntity, sensorType, plantConfig));
-    const min = plantEntity.attributes[`min_${sensorType}`] || 0;
-    const max = plantEntity.attributes[`max_${sensorType}`] || 100;
+    // Get current value with debug info
+    const rawValue = this.getPlantSensorDebug(plantEntity, sensorType);
+    const current = parseFloat(rawValue);
+    
+    // Get limits with better defaults based on sensor type
+    const defaultLimits: { [key: string]: { min: number; max: number } } = {
+      'moisture': { min: 15, max: 60 },
+      'illuminance': { min: 2500, max: 100000 },
+      'temperature': { min: 15, max: 32 },
+      'conductivity': { min: 150, max: 2000 },
+      'humidity': { min: 40, max: 70 },
+      'dli': { min: 5, max: 40 }
+    };
+    
+    const defaults = defaultLimits[sensorType] || { min: 0, max: 100 };
+    const min = plantEntity.attributes[`min_${sensorType}`] || defaults.min;
+    const max = plantEntity.attributes[`max_${sensorType}`] || defaults.max;
     
     // Format display value
-    const displayValue = isNaN(current) ? 'N/A' : current.toString();
+    const displayValue = isNaN(current) ? rawValue : 
+      sensorType === 'illuminance' ? Math.round(current).toString() :
+      current % 1 === 0 ? current.toString() : current.toFixed(1);
+    
     const hasValue = !isNaN(current);
     
     // Calculate percentage for bar
@@ -926,7 +984,7 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     const unit = unitMap[sensorType] || '';
 
     return html`
-      <div class="flower-attribute">
+      <div class="flower-attribute" @click="${() => this.handleSensorClick(plantEntity, sensorType)}">
         <ha-icon .icon="${icon}"></ha-icon>
         <div class="flower-meter">
           <span class="${status}" style="width: ${hasValue ? percentage : 0}%;"></span>
@@ -937,6 +995,17 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         </div>
       </div>
     `;
+  }
+
+  private handleSensorClick(plantEntity: any, sensorType: string): void {
+    // Try to find the sensor entity to open its more-info
+    const sensorEntityId = plantEntity.attributes.sensors?.[sensorType];
+    if (sensorEntityId && this.hass.states[sensorEntityId]) {
+      this.handlePlantClick(sensorEntityId);
+    } else {
+      // Fallback to plant entity
+      this.handlePlantClick(plantEntity.entity_id);
+    }
   }
 
   private renderPlantsGrid() {
