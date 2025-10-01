@@ -1364,7 +1364,7 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
 
       .plants-grid {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: 1fr;
         gap: 12px;
         margin-top: 8px;
       }
@@ -1375,9 +1375,9 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         padding: 12px;
         border: 1px solid rgba(76, 175, 80, 0.3);
         transition: all 0.3s ease;
-        aspect-ratio: 1;
         display: flex;
         flex-direction: column;
+        min-height: 120px;
       }
 
       .plant-card.error {
@@ -1449,18 +1449,17 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
       }
 
       .flower-attributes {
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+        gap: 8px;
         padding: 8px;
-        gap: 4px;
       }
 
       .flower-attribute {
-        display: grid;
-        grid-template-columns: 16px 1fr auto;
+        display: flex;
         align-items: center;
-        width: calc(50% - 2px);
-        gap: 8px;
+        gap: 6px;
         cursor: pointer;
       }
 
@@ -1470,11 +1469,14 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
       }
 
       .flower-meter {
-        height: 8px;
+        height: 6px;
         background-color: var(--primary-background-color);
         border-radius: 2px;
         display: inline-grid;
         overflow: hidden;
+        flex: 1;
+        margin: 0 4px;
+        min-width: 20px;
       }
 
       .flower-meter > span {
@@ -1502,16 +1504,17 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         align-items: flex-end;
         white-space: nowrap;
         text-align: right;
+        min-width: 30px;
       }
 
       .flower-value {
         font-weight: bold;
         color: var(--primary-text-color, #ffffff);
-        font-size: 12px;
+        font-size: 10px;
       }
 
       .flower-unit {
-        font-size: 10px;
+        font-size: 8px;
         color: var(--secondary-text-color, #888);
       }
 
