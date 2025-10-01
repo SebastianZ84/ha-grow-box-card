@@ -1450,36 +1450,29 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
 
       .flower-attributes {
         display: flex;
-        padding: 8px 16px;
-        flex: 1;
-        flex-wrap: wrap;
-        align-content: flex-start;
+        white-space: nowrap;
+        padding: 8px;
       }
 
       .flower-attribute {
+        white-space: nowrap;
         display: flex;
         align-items: center;
         width: 50%;
         cursor: pointer;
-        padding: 2px 0;
       }
 
       .flower-attribute ha-icon {
         color: var(--secondary-text-color, #888);
         --mdc-icon-size: 16px;
-        margin-right: 4px;
-        flex-shrink: 0;
       }
 
       .flower-meter {
         height: 8px;
-        background-color: var(--primary-background-color, #444);
+        background-color: var(--primary-background-color);
         border-radius: 2px;
         display: inline-grid;
         overflow: hidden;
-        flex: 1;
-        margin-right: 6px;
-        min-width: 40px;
       }
 
       .flower-meter > span {
@@ -1506,16 +1499,12 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         flex-direction: column;
         align-items: flex-end;
         white-space: nowrap;
-        min-width: 40px;
-        text-align: right;
-        flex-shrink: 0;
       }
 
       .flower-value {
         font-weight: bold;
         color: var(--primary-text-color, #ffffff);
-        font-size: 11px;
-        line-height: 1.2;
+        font-size: 12px;
       }
 
       .flower-unit {
