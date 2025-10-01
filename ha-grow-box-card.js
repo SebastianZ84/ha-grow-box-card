@@ -1014,16 +1014,13 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         const status = !hasValue ? 'unavailable' :
             (current < min || current > max) ? 'bad' : 'good';
         return x `
-      <div class="sensor-row" @click="${() => this.handleSensorClick(plantEntity, sensorType, sensor)}">
-        <div class="sensor-icon">
-          <ha-icon .icon="${icon}"></ha-icon>
+      <div class="attribute" @click="${() => this.handleSensorClick(plantEntity, sensorType, sensor)}">
+        <ha-icon .icon="${icon}"></ha-icon>
+        <div class="meter">
+          <span class="${status}" style="width: ${hasValue ? percentage : 0}%;"></span>
         </div>
-        <div class="sensor-bar">
-          <div class="sensor-progress ${status}" style="width: ${hasValue ? percentage : 0}%;"></div>
-        </div>
-        <div class="sensor-value">
-          <span class="value">${displayState}</span>
-          <span class="unit">${unit_of_measurement || ''}</span>
+        <div class="header">
+          ${displayState} ${unit_of_measurement || ''}
         </div>
       </div>
     `;
@@ -1451,70 +1448,56 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
       }
 
       .flower-attributes {
-        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        padding: 8px;
+        gap: 8px;
       }
 
-      .sensor-row {
+      .attribute {
+        white-space: nowrap;
         display: flex;
         align-items: center;
-        margin-bottom: 16px;
-        cursor: pointer;
+        width: 100%;
       }
 
-      .sensor-icon {
-        width: 40px;
-        text-align: center;
+      .attribute ha-icon {
+        margin-right: 10px;
+        margin-left: 5px;
       }
 
-      .sensor-icon ha-icon {
-        color: var(--secondary-text-color, #888);
-        --mdc-icon-size: 24px;
-      }
-
-      .sensor-bar {
-        flex: 1;
-        height: 16px;
-        background-color: var(--divider-color, #444);
-        border-radius: 8px;
-        margin: 0 16px;
-        position: relative;
+      .meter {
+        height: 8px;
+        background-color: var(--primary-background-color);
+        border-radius: 2px;
+        display: inline-grid;
         overflow: hidden;
+        flex: 1;
+        margin-right: 8px;
       }
 
-      .sensor-progress {
+      .meter > span {
+        grid-row: 1;
+        grid-column: 1;
         height: 100%;
-        border-radius: 8px;
-        transition: width 0.3s ease;
       }
 
-      .sensor-progress.good {
-        background-color: #4caf50;
+      .meter > .good {
+        background-color: rgba(43,194,83,1);
       }
 
-      .sensor-progress.bad {
-        background-color: #f44336;
+      .meter > .bad {
+        background-color: rgba(240,163,163,1);
       }
 
-      .sensor-progress.unavailable {
-        background-color: #9e9e9e;
+      .meter > .unavailable {
+        background-color: rgba(158,158,158,1);
       }
 
-      .sensor-value {
-        min-width: 80px;
-        text-align: right;
-      }
-
-      .sensor-value .value {
-        font-weight: bold;
-        color: var(--primary-text-color, #ffffff);
-        font-size: 16px;
-        display: block;
-      }
-
-      .sensor-value .unit {
+      .attribute .header {
+        white-space: nowrap;
+        color: var(--primary-text-color);
         font-size: 12px;
-        color: var(--secondary-text-color, #888);
-        display: block;
       }
 
       .plant-card:hover {
