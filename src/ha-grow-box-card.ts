@@ -1504,14 +1504,15 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         display: flex;
         align-items: center;
         width: 50%;
-        gap: 4px;
         cursor: pointer;
-        position: relative;
+        padding: 2px 0;
       }
 
       .flower-attribute ha-icon {
         color: var(--secondary-text-color, #888);
         --mdc-icon-size: 16px;
+        margin-right: 4px;
+        flex-shrink: 0;
       }
 
       .flower-meter {
@@ -1521,8 +1522,8 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         display: inline-grid;
         overflow: hidden;
         flex: 1;
-        margin: 0 4px;
-        min-width: 30px;
+        margin-right: 6px;
+        min-width: 40px;
       }
 
       .flower-meter > span {
@@ -1549,14 +1550,16 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         flex-direction: column;
         align-items: flex-end;
         white-space: nowrap;
-        min-width: 35px;
+        min-width: 40px;
         text-align: right;
+        flex-shrink: 0;
       }
 
       .flower-value {
         font-weight: bold;
         color: var(--primary-text-color, #ffffff);
-        font-size: 12px;
+        font-size: 11px;
+        line-height: 1.2;
       }
 
       .flower-unit {
