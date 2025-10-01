@@ -1450,72 +1450,75 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
 
       .flower-attributes {
         display: flex;
-        flex-wrap: wrap;
-        padding: 8px;
-        gap: 8px;
+        flex-direction: column;
+        padding: 16px;
+        gap: 12px;
       }
 
       .flower-attribute {
         display: flex;
         align-items: center;
-        width: calc(33.333% - 6px);
-        gap: 4px;
+        padding: 8px 0;
         cursor: pointer;
       }
 
       .flower-attribute ha-icon {
         color: var(--secondary-text-color, #888);
-        --mdc-icon-size: 16px;
+        --mdc-icon-size: 20px;
+        margin-right: 12px;
+        flex-shrink: 0;
       }
 
       .flower-meter {
-        height: 8px;
+        height: 12px;
         background-color: var(--primary-background-color);
-        border-radius: 2px;
-        display: inline-grid;
-        overflow: hidden;
+        border-radius: 6px;
         flex: 1;
-        margin: 0 6px;
-        min-width: 30px;
+        margin-right: 12px;
+        position: relative;
+        overflow: hidden;
       }
 
       .flower-meter > span {
-        grid-row: 1;
-        grid-column: 1;
+        position: absolute;
+        top: 0;
+        left: 0;
         height: 100%;
-        border-radius: 2px;
+        border-radius: 6px;
+        transition: width 0.3s ease;
       }
 
       .flower-meter > .good {
-        background-color: rgba(43, 194, 83, 1);
+        background-color: #4caf50;
       }
 
       .flower-meter > .bad {
-        background-color: rgba(240, 163, 163, 1);
+        background-color: #f44336;
       }
 
       .flower-meter > .unavailable {
-        background-color: rgba(158, 158, 158, 1);
+        background-color: #9e9e9e;
       }
 
       .flower-attribute .flower-header {
         display: flex;
         flex-direction: column;
         align-items: flex-end;
-        white-space: nowrap;
+        min-width: 60px;
         text-align: right;
-        min-width: 30px;
       }
 
       .flower-value {
         font-weight: bold;
         color: var(--primary-text-color, #ffffff);
-        font-size: 10px;
+        font-size: 14px;
+        line-height: 1.2;
       }
 
       .flower-unit {
-        font-size: 8px;
+        font-size: 12px;
         color: var(--secondary-text-color, #888);
+        line-height: 1;
       }
 
       .plant-card:hover {
