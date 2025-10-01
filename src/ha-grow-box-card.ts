@@ -760,6 +760,11 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     // Add vents if configured
     if (this.config.vents && this.config.vents.length > 0) {
       this.config.vents.forEach(vent => {
+        if (!vent.entity) {
+          console.warn('Vent configuration missing entity:', vent);
+          return;
+        }
+        
         const entity = this.hass.states[vent.entity];
         const friendlyName = entity?.attributes?.friendly_name || vent.name || vent.entity;
         const icon = vent.icon || 'mdi:air-filter';

@@ -764,6 +764,10 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         if (this.config.vents && this.config.vents.length > 0) {
             this.config.vents.forEach(vent => {
                 var _a;
+                if (!vent.entity) {
+                    console.warn('Vent configuration missing entity:', vent);
+                    return;
+                }
                 const entity = this.hass.states[vent.entity];
                 const friendlyName = ((_a = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _a === void 0 ? void 0 : _a.friendly_name) || vent.name || vent.entity;
                 const icon = vent.icon || 'mdi:air-filter';
