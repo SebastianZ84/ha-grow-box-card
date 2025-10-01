@@ -884,41 +884,59 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
 
   private getSensorIcon(sensorType: string): string {
     const iconMap: { [key: string]: string } = {
-      'moisture': '💧',
-      'illuminance': '☀️',
-      'temperature': '🌡️',
-      'conductivity': '🧪',
-      'humidity': '💨',
-      'dli': '🌞'
+      'moisture': 'mdi:water-percent',
+      'illuminance': 'mdi:white-balance-sunny',
+      'temperature': 'mdi:thermometer',
+      'conductivity': 'mdi:flash',
+      'humidity': 'mdi:air-humidifier',
+      'dli': 'mdi:white-balance-sunny'
     };
-    return iconMap[sensorType] || '📊';
+    return iconMap[sensorType] || 'mdi:chart-line';
   }
 
-  private getSensorUnit(sensorType: string): string {
+  private renderFlowerCardAttribute(sensorType: string, plantEntity: any, plantConfig: any): TemplateResult {
+    const icon = this.getSensorIcon(sensorType);
+    
+    // Get current value and limits from plant entity
+    const current = parseFloat(this.getPlantSensorValueSync(plantEntity, sensorType, plantConfig));
+    const min = plantEntity.attributes[`min_${sensorType}`] || 0;
+    const max = plantEntity.attributes[`max_${sensorType}`] || 100;
+    
+    // Format display value
+    const displayValue = isNaN(current) ? 'N/A' : current.toString();
+    const hasValue = !isNaN(current);
+    
+    // Calculate percentage for bar
+    const percentage = hasValue ? 
+      100 * Math.max(0, Math.min(1, (current - min) / (max - min))) : 0;
+    
+    // Determine status (good/bad/unavailable)
+    const status = !hasValue ? 'unavailable' : 
+      (current < min || current > max) ? 'bad' : 'good';
+    
+    // Get unit
     const unitMap: { [key: string]: string } = {
       'moisture': '%',
-      'illuminance': ' lx',
-      'temperature': '°C',
-      'conductivity': ' µS/cm',
+      'illuminance': 'lx',
+      'temperature': '°C', 
+      'conductivity': 'µS/cm',
       'humidity': '%',
-      'dli': ' mol/m²/d'
+      'dli': 'mol/m²/d'
     };
-    return unitMap[sensorType] || '';
-  }
+    const unit = unitMap[sensorType] || '';
 
-  private async getSensorValueForType(plantEntity: any, sensorType: string, plantConfig?: any): Promise<string> {
-    // Map sensor types to internal method names
-    const typeMapping: { [key: string]: string } = {
-      'moisture': 'moisture',
-      'illuminance': 'illuminance',
-      'temperature': 'temperature',
-      'conductivity': 'conductivity',
-      'humidity': 'humidity',
-      'dli': 'dli'
-    };
-    
-    const mappedType = typeMapping[sensorType] || sensorType;
-    return await this.getPlantSensorValue(plantEntity, mappedType, plantConfig);
+    return html`
+      <div class="flower-attribute">
+        <ha-icon .icon="${icon}"></ha-icon>
+        <div class="flower-meter">
+          <span class="${status}" style="width: ${hasValue ? percentage : 0}%;"></span>
+        </div>
+        <div class="flower-header">
+          <span class="flower-value">${displayValue}</span>
+          <span class="flower-unit">${unit}</span>
+        </div>
+      </div>
+    `;
   }
 
   private renderPlantsGrid() {
@@ -942,56 +960,54 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         `;
       }
 
-      // Get cached data
-      let plantData = {
-        health: 50,
-        status: 'Unknown',
-        healthColor: '#666'
-      };
-
-      const cachedData = this.plantDataCache.get(plant.entity);
-      if (cachedData) {
-        plantData = cachedData;
-      }
-
       // Use show_bars configuration (defaults to common sensors if not specified)
       const showBars = plant.show_bars || ['moisture', 'illuminance', 'temperature', 'conductivity'];
-      const availableSensors: TemplateResult[] = [];
       
-      showBars.forEach(sensorType => {
-        const cachedSensorData = cachedData?.[sensorType];
-        if (cachedSensorData && cachedSensorData !== 'N/A') {
-          const icon = this.getSensorIcon(sensorType);
-          const unit = this.getSensorUnit(sensorType);
-          availableSensors.push(html`
-            <div class="sensor">${icon} ${cachedSensorData}${unit}</div>
-          `);
-        }
-      });
+      // Render attributes using Flower Card style
+      const attributeChunks: TemplateResult[] = [];
+      const attributesPerRow = 2; // Show 2 attributes per row
+      
+      for (let i = 0; i < showBars.length; i += attributesPerRow) {
+        const chunk = showBars.slice(i, i + attributesPerRow);
+        attributeChunks.push(html`
+          <div class="flower-attributes">
+            ${chunk.map(sensorType => 
+              this.renderFlowerCardAttribute(sensorType, plantEntity, plant)
+            )}
+          </div>
+        `);
+      }
 
       const plantIcon = plant.icon || 'mdi:cannabis';
       const plantName = plant.name || plantEntity.attributes?.friendly_name || plant.entity;
+      const species = plantEntity.attributes?.species || '';
+      const image = plantEntity.attributes?.entity_picture;
       
       return html`
-        <div class="plant-card">
-          <div class="plant-icon">
-            ${plantIcon.startsWith('mdi:') ? html`<ha-icon icon="${plantIcon}"></ha-icon>` : plantIcon}
+        <div class="plant-card flower-card">
+          <div class="flower-header" @click="${() => this.handlePlantClick(plant.entity)}">
+            ${image ? html`<img src="${image}" alt="${plantName}">` : html`
+              <div class="flower-icon">
+                ${plantIcon.startsWith('mdi:') ? html`<ha-icon icon="${plantIcon}"></ha-icon>` : plantIcon}
+              </div>
+            `}
+            <span class="flower-name">${plantName}</span>
+            ${species ? html`<span class="flower-species">${species}</span>` : ''}
           </div>
-          <div class="plant-name">${plantName}</div>
-          ${availableSensors.length > 0 ? html`
-            <div class="plant-sensors">
-              ${availableSensors}
-            </div>
-          ` : ''}
-          <div class="plant-health">
-            <div class="health-bar">
-              <div class="health-fill" style="width: ${plantData.health}%; background: ${plantData.healthColor};"></div>
-            </div>
-            <div class="health-text">${plantData.status} - ${plantData.health}%</div>
-          </div>
+          <div class="flower-divider"></div>
+          ${attributeChunks}
         </div>
       `;
     });
+  }
+
+  private handlePlantClick(entityId: string): void {
+    const event = new Event('hass-more-info', {
+      bubbles: true,
+      composed: true,
+    });
+    (event as any).detail = { entityId };
+    this.dispatchEvent(event);
   }
 
 
@@ -1288,6 +1304,127 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         color: #f44336;
         text-align: center;
         margin-top: 8px;
+      }
+
+      /* Flower Card styles */
+      .flower-card {
+        background: var(--card-background-color, #2d2d2d);
+        border-radius: 8px;
+        border: 1px solid rgba(76, 175, 80, 0.3);
+        overflow: hidden;
+      }
+
+      .flower-header {
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        cursor: pointer;
+        background: var(--card-background-color, #2d2d2d);
+      }
+
+      .flower-header img {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+
+      .flower-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(76, 175, 80, 0.2);
+        border-radius: 50%;
+        color: var(--primary-color, #4CAF50);
+      }
+
+      .flower-icon ha-icon {
+        --mdc-icon-size: 24px;
+      }
+
+      .flower-name {
+        font-weight: bold;
+        color: var(--primary-text-color, #ffffff);
+        flex: 1;
+      }
+
+      .flower-species {
+        font-size: 12px;
+        color: var(--secondary-text-color, #888);
+      }
+
+      .flower-divider {
+        height: 1px;
+        background: rgba(76, 175, 80, 0.3);
+        margin: 0 16px;
+      }
+
+      .flower-attributes {
+        display: flex;
+        padding: 8px 16px;
+      }
+
+      .flower-attribute {
+        display: flex;
+        align-items: center;
+        width: 50%;
+        gap: 8px;
+        cursor: pointer;
+      }
+
+      .flower-attribute ha-icon {
+        color: var(--secondary-text-color, #888);
+        --mdc-icon-size: 16px;
+      }
+
+      .flower-meter {
+        height: 8px;
+        background-color: var(--primary-background-color, #444);
+        border-radius: 2px;
+        display: inline-grid;
+        overflow: hidden;
+        flex: 1;
+        margin: 0 8px;
+      }
+
+      .flower-meter > span {
+        grid-row: 1;
+        grid-column: 1;
+        height: 100%;
+        border-radius: 2px;
+      }
+
+      .flower-meter > .good {
+        background-color: rgba(43, 194, 83, 1);
+      }
+
+      .flower-meter > .bad {
+        background-color: rgba(240, 163, 163, 1);
+      }
+
+      .flower-meter > .unavailable {
+        background-color: rgba(158, 158, 158, 1);
+      }
+
+      .flower-attribute .flower-header {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        white-space: nowrap;
+      }
+
+      .flower-value {
+        font-weight: bold;
+        color: var(--primary-text-color, #ffffff);
+        font-size: 12px;
+      }
+
+      .flower-unit {
+        font-size: 10px;
+        color: var(--secondary-text-color, #888);
       }
 
       .plant-card:hover {
