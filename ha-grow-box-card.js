@@ -1449,17 +1449,17 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
       }
 
       .flower-attributes {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        grid-template-rows: repeat(2, 1fr);
-        gap: 8px;
+        display: flex;
+        flex-wrap: wrap;
         padding: 8px;
+        gap: 8px;
       }
 
       .flower-attribute {
         display: flex;
         align-items: center;
-        gap: 6px;
+        width: calc(33.333% - 6px);
+        gap: 4px;
         cursor: pointer;
       }
 
@@ -1469,14 +1469,14 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
       }
 
       .flower-meter {
-        height: 6px;
+        height: 8px;
         background-color: var(--primary-background-color);
         border-radius: 2px;
         display: inline-grid;
         overflow: hidden;
         flex: 1;
-        margin: 0 4px;
-        min-width: 20px;
+        margin: 0 6px;
+        min-width: 30px;
       }
 
       .flower-meter > span {
