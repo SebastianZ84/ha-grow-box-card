@@ -11,6 +11,7 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
   @state() private config!: GrowBoxCardConfig;
   @state() private plantInfoCache: Map<string, any> = new Map();
   @state() private plantDataCache: Map<string, any> = new Map();
+  @state() private sliderValues: Map<string, number> = new Map();
 
   public static async getConfigElement(): Promise<LovelaceCardEditor> {
     await import('./editor');
@@ -535,8 +536,17 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     });
   }
 
+  private handleSliderInput(entityId: string, value: number): void {
+    // Update local slider state immediately for smooth UI
+    this.sliderValues.set(entityId, value);
+    this.requestUpdate();
+  }
+
   private handleSliderChange(entityId: string, value: number, type: 'light' | 'fan'): void {
     if (!this.hass || !entityId) return;
+
+    // Update local state
+    this.sliderValues.set(entityId, value);
 
     let service: string;
     let serviceData: any = { entity_id: entityId };
@@ -559,9 +569,35 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
       return; // Unknown type
     }
 
-    this.hass.callService(service.split('.')[0], service.split('.')[1], serviceData).catch(error => {
+    this.hass.callService(service.split('.')[0], service.split('.')[1], serviceData).then(() => {
+      // Clear local state after successful service call to use actual entity state
+      setTimeout(() => {
+        this.sliderValues.delete(entityId);
+        this.requestUpdate();
+      }, 1000); // Wait 1 second for state to propagate
+    }).catch(error => {
       console.error('Error calling service:', error);
+      // Clear local state on error too
+      this.sliderValues.delete(entityId);
+      this.requestUpdate();
     });
+  }
+
+  private getSliderValue(entityId: string, type: 'light' | 'fan'): number {
+    // Return local slider value if being actively adjusted, otherwise use entity state
+    if (this.sliderValues.has(entityId)) {
+      return this.sliderValues.get(entityId)!;
+    }
+
+    if (type === 'light') {
+      const currentBrightness = this.getLightBrightness();
+      return parseInt(currentBrightness.replace('%', '')) || 0;
+    } else if (type === 'fan') {
+      const currentSpeed = this.getFanSpeed(entityId);
+      return parseInt(currentSpeed.replace('%', '')) || 0;
+    }
+
+    return 0;
   }
 
 
@@ -675,8 +711,10 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
       const entity = this.hass.states[this.config.light_entity];
       const friendlyName = entity?.attributes?.friendly_name || this.config.light_entity;
       const icon = this.config.light_icon || 'mdi:lightbulb';
-      const currentBrightness = this.getLightBrightness();
-      const brightnessValue = parseInt(currentBrightness.replace('%', '')) || 0;
+      const brightnessValue = this.getSliderValue(this.config.light_entity, 'light');
+      const currentBrightness = this.sliderValues.has(this.config.light_entity) 
+        ? `${brightnessValue}%` 
+        : this.getLightBrightness();
       
       controls.push(html`
         <div class="control-card light">
@@ -695,6 +733,10 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
                 value="${brightnessValue}"
                 @input="${(e: Event) => {
                   const target = e.target as HTMLInputElement;
+                  this.handleSliderInput(this.config.light_entity!, parseInt(target.value));
+                }}"
+                @change="${(e: Event) => {
+                  const target = e.target as HTMLInputElement;
                   this.handleSliderChange(this.config.light_entity!, parseInt(target.value), 'light');
                 }}"
                 class="brightness-slider"
@@ -709,8 +751,10 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
       const entity = this.hass.states[this.config.ventilation_entity];
       const friendlyName = entity?.attributes?.friendly_name || this.config.ventilation_entity;
       const icon = this.config.ventilation_icon || 'mdi:fan';
-      const currentSpeed = this.getFanSpeed(this.config.ventilation_entity);
-      const speedValue = parseInt(currentSpeed.replace('%', '')) || 0;
+      const speedValue = this.getSliderValue(this.config.ventilation_entity, 'fan');
+      const currentSpeed = this.sliderValues.has(this.config.ventilation_entity) 
+        ? `${speedValue}%` 
+        : this.getFanSpeed(this.config.ventilation_entity);
       
       controls.push(html`
         <div class="control-card ventilation">
@@ -728,6 +772,10 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
                 max="100" 
                 value="${speedValue}"
                 @input="${(e: Event) => {
+                  const target = e.target as HTMLInputElement;
+                  this.handleSliderInput(this.config.ventilation_entity!, parseInt(target.value));
+                }}"
+                @change="${(e: Event) => {
                   const target = e.target as HTMLInputElement;
                   this.handleSliderChange(this.config.ventilation_entity!, parseInt(target.value), 'fan');
                 }}"
@@ -772,8 +820,10 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         
         if (domain === 'fan') {
           // Fan vent with speed control
-          const currentSpeed = this.getFanSpeed(vent.entity);
-          const speedValue = parseInt(currentSpeed.replace('%', '')) || 0;
+          const speedValue = this.getSliderValue(vent.entity, 'fan');
+          const currentSpeed = this.sliderValues.has(vent.entity) 
+            ? `${speedValue}%` 
+            : this.getFanSpeed(vent.entity);
           
           controls.push(html`
             <div class="control-card vent">
@@ -791,6 +841,10 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
                     max="100" 
                     value="${speedValue}"
                     @input="${(e: Event) => {
+                      const target = e.target as HTMLInputElement;
+                      this.handleSliderInput(vent.entity, parseInt(target.value));
+                    }}"
+                    @change="${(e: Event) => {
                       const target = e.target as HTMLInputElement;
                       this.handleSliderChange(vent.entity, parseInt(target.value), 'fan');
                     }}"

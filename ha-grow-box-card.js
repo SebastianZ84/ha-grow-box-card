@@ -77,6 +77,7 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         super(...arguments);
         this.plantInfoCache = new Map();
         this.plantDataCache = new Map();
+        this.sliderValues = new Map();
     }
     static async getConfigElement() {
         await Promise.resolve().then(function () { return editor; });
@@ -549,9 +550,16 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             console.error('Error calling service:', error);
         });
     }
+    handleSliderInput(entityId, value) {
+        // Update local slider state immediately for smooth UI
+        this.sliderValues.set(entityId, value);
+        this.requestUpdate();
+    }
     handleSliderChange(entityId, value, type) {
         if (!this.hass || !entityId)
             return;
+        // Update local state
+        this.sliderValues.set(entityId, value);
         let service;
         let serviceData = { entity_id: entityId };
         if (type === 'light') {
@@ -575,9 +583,33 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         else {
             return; // Unknown type
         }
-        this.hass.callService(service.split('.')[0], service.split('.')[1], serviceData).catch(error => {
+        this.hass.callService(service.split('.')[0], service.split('.')[1], serviceData).then(() => {
+            // Clear local state after successful service call to use actual entity state
+            setTimeout(() => {
+                this.sliderValues.delete(entityId);
+                this.requestUpdate();
+            }, 1000); // Wait 1 second for state to propagate
+        }).catch(error => {
             console.error('Error calling service:', error);
+            // Clear local state on error too
+            this.sliderValues.delete(entityId);
+            this.requestUpdate();
         });
+    }
+    getSliderValue(entityId, type) {
+        // Return local slider value if being actively adjusted, otherwise use entity state
+        if (this.sliderValues.has(entityId)) {
+            return this.sliderValues.get(entityId);
+        }
+        if (type === 'light') {
+            const currentBrightness = this.getLightBrightness();
+            return parseInt(currentBrightness.replace('%', '')) || 0;
+        }
+        else if (type === 'fan') {
+            const currentSpeed = this.getFanSpeed(entityId);
+            return parseInt(currentSpeed.replace('%', '')) || 0;
+        }
+        return 0;
     }
     renderOptionalSensors() {
         var _a, _b, _c, _d, _e;
@@ -683,8 +715,10 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             const entity = this.hass.states[this.config.light_entity];
             const friendlyName = ((_a = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _a === void 0 ? void 0 : _a.friendly_name) || this.config.light_entity;
             const icon = this.config.light_icon || 'mdi:lightbulb';
-            const currentBrightness = this.getLightBrightness();
-            const brightnessValue = parseInt(currentBrightness.replace('%', '')) || 0;
+            const brightnessValue = this.getSliderValue(this.config.light_entity, 'light');
+            const currentBrightness = this.sliderValues.has(this.config.light_entity)
+                ? `${brightnessValue}%`
+                : this.getLightBrightness();
             controls.push(x `
         <div class="control-card light">
           <div class="control-icon" @click="${() => this.handleControlClick(this.config.light_entity)}">
@@ -702,6 +736,10 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
                 value="${brightnessValue}"
                 @input="${(e) => {
                 const target = e.target;
+                this.handleSliderInput(this.config.light_entity, parseInt(target.value));
+            }}"
+                @change="${(e) => {
+                const target = e.target;
                 this.handleSliderChange(this.config.light_entity, parseInt(target.value), 'light');
             }}"
                 class="brightness-slider"
@@ -715,8 +753,10 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             const entity = this.hass.states[this.config.ventilation_entity];
             const friendlyName = ((_b = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || this.config.ventilation_entity;
             const icon = this.config.ventilation_icon || 'mdi:fan';
-            const currentSpeed = this.getFanSpeed(this.config.ventilation_entity);
-            const speedValue = parseInt(currentSpeed.replace('%', '')) || 0;
+            const speedValue = this.getSliderValue(this.config.ventilation_entity, 'fan');
+            const currentSpeed = this.sliderValues.has(this.config.ventilation_entity)
+                ? `${speedValue}%`
+                : this.getFanSpeed(this.config.ventilation_entity);
             controls.push(x `
         <div class="control-card ventilation">
           <div class="control-icon" @click="${() => this.handleControlClick(this.config.ventilation_entity)}">
@@ -733,6 +773,10 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
                 max="100" 
                 value="${speedValue}"
                 @input="${(e) => {
+                const target = e.target;
+                this.handleSliderInput(this.config.ventilation_entity, parseInt(target.value));
+            }}"
+                @change="${(e) => {
                 const target = e.target;
                 this.handleSliderChange(this.config.ventilation_entity, parseInt(target.value), 'fan');
             }}"
@@ -774,8 +818,10 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
                 const domain = vent.entity.split('.')[0];
                 if (domain === 'fan') {
                     // Fan vent with speed control
-                    const currentSpeed = this.getFanSpeed(vent.entity);
-                    const speedValue = parseInt(currentSpeed.replace('%', '')) || 0;
+                    const speedValue = this.getSliderValue(vent.entity, 'fan');
+                    const currentSpeed = this.sliderValues.has(vent.entity)
+                        ? `${speedValue}%`
+                        : this.getFanSpeed(vent.entity);
                     controls.push(x `
             <div class="control-card vent">
               <div class="control-icon" @click="${() => this.handleControlClick(vent.entity)}">
@@ -792,6 +838,10 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
                     max="100" 
                     value="${speedValue}"
                     @input="${(e) => {
+                        const target = e.target;
+                        this.handleSliderInput(vent.entity, parseInt(target.value));
+                    }}"
+                    @change="${(e) => {
                         const target = e.target;
                         this.handleSliderChange(vent.entity, parseInt(target.value), 'fan');
                     }}"
@@ -1319,6 +1369,9 @@ __decorate([
 __decorate([
     r$1()
 ], HaGrowBoxCard.prototype, "plantDataCache", void 0);
+__decorate([
+    r$1()
+], HaGrowBoxCard.prototype, "sliderValues", void 0);
 HaGrowBoxCard = __decorate([
     t$1('ha-grow-box-card')
 ], HaGrowBoxCard);
