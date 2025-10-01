@@ -329,107 +329,30 @@ export class GrowBoxCardEditor extends LitElement implements LovelaceCardEditor 
             </div>
 
             <div class="form-group">
-              <label for="plant-position-${index}">Position (1-4)</label>
+              <label for="plant-name-${index}">Name (Optional)</label>
               <input
-                id="plant-position-${index}"
-                type="number"
-                min="1"
-                max="4"
-                .value=${plant.position || 1}
-                @input=${(ev: any) => this._plantChanged(index, 'position', parseInt(ev.target.value))}
+                id="plant-name-${index}"
+                type="text"
+                .value=${plant.name || ''}
+                placeholder="Override plant name..."
+                @input=${(ev: any) => this._plantChanged(index, 'name', ev.target.value)}
               />
             </div>
 
-            <h4>Individual Sensors (Optional)</h4>
-            
             <div class="form-group">
-              <label for="plant-moisture-${index}">Moisture Sensor</label>
-              <select
-                id="plant-moisture-${index}"
-                @change=${(ev: any) => this._plantChanged(index, 'moisture_sensor', ev.target.value)}
-              >
-                <option value="">Select sensor...</option>
-                ${sensorEntities.map(entity => html`
-                  <option 
-                    value=${entity} 
-                    ?selected=${entity === plant.moisture_sensor}
-                  >
-                    ${entity} (${this.hass.states[entity]?.attributes?.friendly_name || entity})
-                  </option>
+              <label for="plant-showbars-${index}">Show Bars (Flower Card format)</label>
+              <div class="checkbox-group">
+                ${['moisture', 'illuminance', 'temperature', 'conductivity', 'humidity', 'dli'].map(sensor => html`
+                  <label class="checkbox-label">
+                    <input
+                      type="checkbox"
+                      .checked=${(plant.show_bars || []).includes(sensor)}
+                      @change=${(ev: any) => this._updateShowBars(index, sensor, ev.target.checked)}
+                    />
+                    ${sensor}
+                  </label>
                 `)}
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="plant-temperature-${index}">Temperature Sensor</label>
-              <select
-                id="plant-temperature-${index}"
-                @change=${(ev: any) => this._plantChanged(index, 'temperature_sensor', ev.target.value)}
-              >
-                <option value="">Select sensor...</option>
-                ${sensorEntities.map(entity => html`
-                  <option 
-                    value=${entity} 
-                    ?selected=${entity === plant.temperature_sensor}
-                  >
-                    ${entity} (${this.hass.states[entity]?.attributes?.friendly_name || entity})
-                  </option>
-                `)}
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="plant-illuminance-${index}">Light Sensor</label>
-              <select
-                id="plant-illuminance-${index}"
-                @change=${(ev: any) => this._plantChanged(index, 'illuminance_sensor', ev.target.value)}
-              >
-                <option value="">Select sensor...</option>
-                ${sensorEntities.map(entity => html`
-                  <option 
-                    value=${entity} 
-                    ?selected=${entity === plant.illuminance_sensor}
-                  >
-                    ${entity} (${this.hass.states[entity]?.attributes?.friendly_name || entity})
-                  </option>
-                `)}
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="plant-conductivity-${index}">Conductivity Sensor</label>
-              <select
-                id="plant-conductivity-${index}"
-                @change=${(ev: any) => this._plantChanged(index, 'conductivity_sensor', ev.target.value)}
-              >
-                <option value="">Select sensor...</option>
-                ${sensorEntities.map(entity => html`
-                  <option 
-                    value=${entity} 
-                    ?selected=${entity === plant.conductivity_sensor}
-                  >
-                    ${entity} (${this.hass.states[entity]?.attributes?.friendly_name || entity})
-                  </option>
-                `)}
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="plant-battery-${index}">Battery Sensor</label>
-              <select
-                id="plant-battery-${index}"
-                @change=${(ev: any) => this._plantChanged(index, 'battery_sensor', ev.target.value)}
-              >
-                <option value="">Select sensor...</option>
-                ${sensorEntities.map(entity => html`
-                  <option 
-                    value=${entity} 
-                    ?selected=${entity === plant.battery_sensor}
-                  >
-                    ${entity} (${this.hass.states[entity]?.attributes?.friendly_name || entity})
-                  </option>
-                `)}
-              </select>
+              </div>
             </div>
 
             <button class="remove-button" @click=${() => this._removePlant(index)}>Remove Plant</button>
@@ -518,14 +441,33 @@ export class GrowBoxCardEditor extends LitElement implements LovelaceCardEditor 
     fireEvent(this, 'config-changed', { config: newConfig });
   }
 
+  private _updateShowBars(index: number, sensor: string, checked: boolean): void {
+    const plants = [...(this._config.plants || [])];
+    const plant = plants[index];
+    let showBars = [...(plant.show_bars || [])];
+    
+    if (checked && !showBars.includes(sensor)) {
+      showBars.push(sensor);
+    } else if (!checked && showBars.includes(sensor)) {
+      showBars = showBars.filter(s => s !== sensor);
+    }
+    
+    plants[index] = { ...plant, show_bars: showBars };
+    
+    const newConfig = {
+      ...this._config,
+      plants
+    };
+
+    fireEvent(this, 'config-changed', { config: newConfig });
+  }
+
   private _addPlant(): void {
     const plants = [...(this._config.plants || [])];
-    const nextPosition = Math.max(0, ...plants.map(p => p.position || 0)) + 1;
     
     plants.push({ 
-      name: `Plant ${nextPosition}`, 
-      entity: '', 
-      position: Math.min(4, nextPosition)
+      entity: '',
+      show_bars: ['moisture', 'illuminance', 'temperature', 'conductivity']
     });
 
     const newConfig = {
@@ -640,6 +582,25 @@ export class GrowBoxCardEditor extends LitElement implements LovelaceCardEditor 
       .add-button:hover,
       .remove-button:hover {
         opacity: 0.9;
+      }
+
+      .checkbox-group {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+
+      .checkbox-label input[type="checkbox"] {
+        margin: 0;
       }
 
       select option {

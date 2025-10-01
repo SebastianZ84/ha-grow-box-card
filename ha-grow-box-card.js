@@ -87,15 +87,14 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         return {
             type: 'custom:ha-grow-box-card',
             name: 'Grow Box',
-            vpd: {
-                enabled: true,
-                show_phases: true
+            vpd_calculation: {
+                enabled: true
             },
             plants: [
-                { name: 'Plant 1', position: 1 },
-                { name: 'Plant 2', position: 2 },
-                { name: 'Plant 3', position: 3 },
-                { name: 'Plant 4', position: 4 }
+                {
+                    entity: 'plant.my_plant',
+                    show_bars: ['moisture', 'illuminance', 'temperature', 'conductivity']
+                }
             ]
         };
     }
@@ -124,15 +123,17 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
                 if (plantEntity) {
                     try {
                         const healthData = await this.calculatePlantHealth(plantEntity, plant);
+                        // Load all possible sensor types (not just show_bars) for health calculation
+                        const allSensorTypes = ['moisture', 'illuminance', 'temperature', 'conductivity', 'humidity', 'dli'];
                         const plantData = {
-                            moisture: await this.getPlantSensorValue(plantEntity, 'moisture', plant),
-                            light: await this.getPlantSensorValue(plantEntity, 'illuminance', plant),
-                            temp: await this.getPlantSensorValue(plantEntity, 'temperature', plant),
-                            ec: await this.getPlantSensorValue(plantEntity, 'conductivity', plant),
                             health: healthData.health,
                             status: healthData.status,
                             healthColor: healthData.color
                         };
+                        // Load sensor data for all types
+                        for (const sensorType of allSensorTypes) {
+                            plantData[sensorType] = await this.getPlantSensorValue(plantEntity, sensorType, plant);
+                        }
                         this.plantDataCache.set(plant.entity, plantData);
                         this.requestUpdate(); // Trigger re-render with new data
                     }
@@ -384,10 +385,12 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         }
         // Check for sensor data in different attribute names
         const alternativeNames = {
-            'moisture': ['soil_moisture', 'moisture_level', 'humidity', 'moisture'],
+            'moisture': ['soil_moisture', 'moisture_level', 'moisture'],
             'illuminance': ['light_intensity', 'light', 'brightness', 'illuminance'],
             'temperature': ['temp', 'temperature'],
-            'conductivity': ['electrical_conductivity', 'ec', 'conductivity', 'fertility']
+            'conductivity': ['electrical_conductivity', 'ec', 'conductivity', 'fertility'],
+            'humidity': ['humidity', 'relative_humidity', 'rh'],
+            'dli': ['dli', 'daily_light_integral', 'light_integral']
         };
         const alternatives = alternativeNames[sensorType] || [];
         for (const altName of alternatives) {
@@ -444,10 +447,12 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         }
         // Check for sensor data in different attribute names
         const alternativeNames = {
-            'moisture': ['soil_moisture', 'moisture_level', 'humidity', 'moisture'],
+            'moisture': ['soil_moisture', 'moisture_level', 'moisture'],
             'illuminance': ['light_intensity', 'light', 'brightness', 'illuminance'],
             'temperature': ['temp', 'temperature'],
-            'conductivity': ['electrical_conductivity', 'ec', 'conductivity', 'fertility']
+            'conductivity': ['electrical_conductivity', 'ec', 'conductivity', 'fertility'],
+            'humidity': ['humidity', 'relative_humidity', 'rh'],
+            'dli': ['dli', 'daily_light_integral', 'light_integral']
         };
         const alternatives = alternativeNames[sensorType] || [];
         for (const altName of alternatives) {
@@ -871,47 +876,91 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         }
         return controls;
     }
+    getSensorIcon(sensorType) {
+        const iconMap = {
+            'moisture': '💧',
+            'illuminance': '☀️',
+            'temperature': '🌡️',
+            'conductivity': '🧪',
+            'humidity': '💨',
+            'dli': '🌞'
+        };
+        return iconMap[sensorType] || '📊';
+    }
+    getSensorUnit(sensorType) {
+        const unitMap = {
+            'moisture': '%',
+            'illuminance': ' lx',
+            'temperature': '°C',
+            'conductivity': ' µS/cm',
+            'humidity': '%',
+            'dli': ' mol/m²/d'
+        };
+        return unitMap[sensorType] || '';
+    }
+    async getSensorValueForType(plantEntity, sensorType, plantConfig) {
+        // Map sensor types to internal method names
+        const typeMapping = {
+            'moisture': 'moisture',
+            'illuminance': 'illuminance',
+            'temperature': 'temperature',
+            'conductivity': 'conductivity',
+            'humidity': 'humidity',
+            'dli': 'dli'
+        };
+        const mappedType = typeMapping[sensorType] || sensorType;
+        return await this.getPlantSensorValue(plantEntity, mappedType, plantConfig);
+    }
     renderPlantsGrid() {
         const plants = this.config.plants || [];
         // Only render configured plants, no empty placeholders
         return plants.map(plant => {
+            var _a;
+            if (!plant.entity) {
+                console.warn('Plant configuration missing entity:', plant);
+                return x ``;
+            }
+            const plantEntity = this.hass.states[plant.entity];
+            if (!plantEntity) {
+                return x `
+          <div class="plant-card error">
+            <div class="plant-icon">⚠️</div>
+            <div class="plant-name">${plant.name || plant.entity}</div>
+            <div class="error-text">Entity not found: ${plant.entity}</div>
+          </div>
+        `;
+            }
             // Get cached data
             let plantData = {
-                moisture: '23.0',
-                temp: '16.7',
-                light: 'OK',
-                ec: 'OK',
-                health: 30,
-                status: 'Problem',
-                healthColor: '#f44336'
+                health: 50,
+                status: 'Unknown',
+                healthColor: '#666'
             };
-            if (plant.entity) {
-                const cachedData = this.plantDataCache.get(plant.entity);
-                if (cachedData) {
-                    plantData = cachedData;
-                }
+            const cachedData = this.plantDataCache.get(plant.entity);
+            if (cachedData) {
+                plantData = cachedData;
             }
-            // Only show sensors that have actual data (not N/A)
+            // Use show_bars configuration (defaults to common sensors if not specified)
+            const showBars = plant.show_bars || ['moisture', 'illuminance', 'temperature', 'conductivity'];
             const availableSensors = [];
-            if (plantData.moisture && plantData.moisture !== 'N/A') {
-                availableSensors.push(x `<div class="sensor">💧 ${plantData.moisture}%</div>`);
-            }
-            if (plantData.temp && plantData.temp !== 'N/A') {
-                availableSensors.push(x `<div class="sensor">🌡️ ${plantData.temp}°C</div>`);
-            }
-            if (plantData.light && plantData.light !== 'N/A') {
-                availableSensors.push(x `<div class="sensor">☀️ ${plantData.light}</div>`);
-            }
-            if (plantData.ec && plantData.ec !== 'N/A') {
-                availableSensors.push(x `<div class="sensor">🧪 ${plantData.ec}</div>`);
-            }
+            showBars.forEach(sensorType => {
+                const cachedSensorData = cachedData === null || cachedData === void 0 ? void 0 : cachedData[sensorType];
+                if (cachedSensorData && cachedSensorData !== 'N/A') {
+                    const icon = this.getSensorIcon(sensorType);
+                    const unit = this.getSensorUnit(sensorType);
+                    availableSensors.push(x `
+            <div class="sensor">${icon} ${cachedSensorData}${unit}</div>
+          `);
+                }
+            });
             const plantIcon = plant.icon || 'mdi:cannabis';
+            const plantName = plant.name || ((_a = plantEntity.attributes) === null || _a === void 0 ? void 0 : _a.friendly_name) || plant.entity;
             return x `
         <div class="plant-card">
           <div class="plant-icon">
             ${plantIcon.startsWith('mdi:') ? x `<ha-icon icon="${plantIcon}"></ha-icon>` : plantIcon}
           </div>
-          <div class="plant-name">${plant.name}</div>
+          <div class="plant-name">${plantName}</div>
           ${availableSensors.length > 0 ? x `
             <div class="plant-sensors">
               ${availableSensors}
@@ -1206,6 +1255,18 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         border: 1px solid rgba(76, 175, 80, 0.3);
         transition: all 0.3s ease;
         min-height: 140px;
+      }
+
+      .plant-card.error {
+        border-color: #f44336;
+        background: rgba(244, 67, 54, 0.1);
+      }
+
+      .error-text {
+        font-size: 10px;
+        color: #f44336;
+        text-align: center;
+        margin-top: 8px;
       }
 
       .plant-card:hover {
@@ -1732,122 +1793,30 @@ let GrowBoxCardEditor = class GrowBoxCardEditor extends i {
             </div>
 
             <div class="form-group">
-              <label for="plant-position-${index}">Position (1-4)</label>
+              <label for="plant-name-${index}">Name (Optional)</label>
               <input
-                id="plant-position-${index}"
-                type="number"
-                min="1"
-                max="4"
-                .value=${plant.position || 1}
-                @input=${(ev) => this._plantChanged(index, 'position', parseInt(ev.target.value))}
+                id="plant-name-${index}"
+                type="text"
+                .value=${plant.name || ''}
+                placeholder="Override plant name..."
+                @input=${(ev) => this._plantChanged(index, 'name', ev.target.value)}
               />
             </div>
 
-            <h4>Individual Sensors (Optional)</h4>
-            
             <div class="form-group">
-              <label for="plant-moisture-${index}">Moisture Sensor</label>
-              <select
-                id="plant-moisture-${index}"
-                @change=${(ev) => this._plantChanged(index, 'moisture_sensor', ev.target.value)}
-              >
-                <option value="">Select sensor...</option>
-                ${sensorEntities.map(entity => {
-            var _a, _b;
-            return x `
-                  <option 
-                    value=${entity} 
-                    ?selected=${entity === plant.moisture_sensor}
-                  >
-                    ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
-                  </option>
-                `;
-        })}
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="plant-temperature-${index}">Temperature Sensor</label>
-              <select
-                id="plant-temperature-${index}"
-                @change=${(ev) => this._plantChanged(index, 'temperature_sensor', ev.target.value)}
-              >
-                <option value="">Select sensor...</option>
-                ${sensorEntities.map(entity => {
-            var _a, _b;
-            return x `
-                  <option 
-                    value=${entity} 
-                    ?selected=${entity === plant.temperature_sensor}
-                  >
-                    ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
-                  </option>
-                `;
-        })}
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="plant-illuminance-${index}">Light Sensor</label>
-              <select
-                id="plant-illuminance-${index}"
-                @change=${(ev) => this._plantChanged(index, 'illuminance_sensor', ev.target.value)}
-              >
-                <option value="">Select sensor...</option>
-                ${sensorEntities.map(entity => {
-            var _a, _b;
-            return x `
-                  <option 
-                    value=${entity} 
-                    ?selected=${entity === plant.illuminance_sensor}
-                  >
-                    ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
-                  </option>
-                `;
-        })}
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="plant-conductivity-${index}">Conductivity Sensor</label>
-              <select
-                id="plant-conductivity-${index}"
-                @change=${(ev) => this._plantChanged(index, 'conductivity_sensor', ev.target.value)}
-              >
-                <option value="">Select sensor...</option>
-                ${sensorEntities.map(entity => {
-            var _a, _b;
-            return x `
-                  <option 
-                    value=${entity} 
-                    ?selected=${entity === plant.conductivity_sensor}
-                  >
-                    ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
-                  </option>
-                `;
-        })}
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="plant-battery-${index}">Battery Sensor</label>
-              <select
-                id="plant-battery-${index}"
-                @change=${(ev) => this._plantChanged(index, 'battery_sensor', ev.target.value)}
-              >
-                <option value="">Select sensor...</option>
-                ${sensorEntities.map(entity => {
-            var _a, _b;
-            return x `
-                  <option 
-                    value=${entity} 
-                    ?selected=${entity === plant.battery_sensor}
-                  >
-                    ${entity} (${((_b = (_a = this.hass.states[entity]) === null || _a === void 0 ? void 0 : _a.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || entity})
-                  </option>
-                `;
-        })}
-              </select>
+              <label for="plant-showbars-${index}">Show Bars (Flower Card format)</label>
+              <div class="checkbox-group">
+                ${['moisture', 'illuminance', 'temperature', 'conductivity', 'humidity', 'dli'].map(sensor => x `
+                  <label class="checkbox-label">
+                    <input
+                      type="checkbox"
+                      .checked=${(plant.show_bars || []).includes(sensor)}
+                      @change=${(ev) => this._updateShowBars(index, sensor, ev.target.checked)}
+                    />
+                    ${sensor}
+                  </label>
+                `)}
+              </div>
             </div>
 
             <button class="remove-button" @click=${() => this._removePlant(index)}>Remove Plant</button>
@@ -1896,13 +1865,25 @@ let GrowBoxCardEditor = class GrowBoxCardEditor extends i {
         const newConfig = Object.assign(Object.assign({}, this._config), { plants });
         ne(this, 'config-changed', { config: newConfig });
     }
+    _updateShowBars(index, sensor, checked) {
+        const plants = [...(this._config.plants || [])];
+        const plant = plants[index];
+        let showBars = [...(plant.show_bars || [])];
+        if (checked && !showBars.includes(sensor)) {
+            showBars.push(sensor);
+        }
+        else if (!checked && showBars.includes(sensor)) {
+            showBars = showBars.filter(s => s !== sensor);
+        }
+        plants[index] = Object.assign(Object.assign({}, plant), { show_bars: showBars });
+        const newConfig = Object.assign(Object.assign({}, this._config), { plants });
+        ne(this, 'config-changed', { config: newConfig });
+    }
     _addPlant() {
         const plants = [...(this._config.plants || [])];
-        const nextPosition = Math.max(0, ...plants.map(p => p.position || 0)) + 1;
         plants.push({
-            name: `Plant ${nextPosition}`,
             entity: '',
-            position: Math.min(4, nextPosition)
+            show_bars: ['moisture', 'illuminance', 'temperature', 'conductivity']
         });
         const newConfig = Object.assign(Object.assign({}, this._config), { plants });
         ne(this, 'config-changed', { config: newConfig });
@@ -2005,6 +1986,25 @@ let GrowBoxCardEditor = class GrowBoxCardEditor extends i {
       .add-button:hover,
       .remove-button:hover {
         opacity: 0.9;
+      }
+
+      .checkbox-group {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+
+      .checkbox-label input[type="checkbox"] {
+        margin: 0;
       }
 
       select option {

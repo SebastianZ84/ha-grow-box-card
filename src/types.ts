@@ -50,17 +50,10 @@ export interface VentConfig {
 }
 
 export interface PlantConfig {
-  name: string;
-  entity?: string; // Optional - can use individual sensors without plant entity
-  position?: number; // 1-4 for positioning in the tent
-  image?: string;
+  entity: string; // Plant entity (required, just like Flower Card)
+  name?: string; // Optional override name
   icon?: string; // Custom plant icon
-  // Individual sensor entities (like lovelace flower card)
-  moisture_sensor?: string;
-  temperature_sensor?: string;
-  illuminance_sensor?: string;
-  conductivity_sensor?: string;
-  battery_sensor?: string;
+  show_bars?: string[]; // Array of sensor types to show: illuminance, humidity, moisture, conductivity, temperature, dli
 }
 
 export interface VPDConfig {

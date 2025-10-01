@@ -22,15 +22,14 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     return {
       type: 'custom:ha-grow-box-card',
       name: 'Grow Box',
-      vpd: {
-        enabled: true,
-        show_phases: true
+      vpd_calculation: {
+        enabled: true
       },
       plants: [
-        { name: 'Plant 1', position: 1 },
-        { name: 'Plant 2', position: 2 },
-        { name: 'Plant 3', position: 3 },
-        { name: 'Plant 4', position: 4 }
+        { 
+          entity: 'plant.my_plant',
+          show_bars: ['moisture', 'illuminance', 'temperature', 'conductivity']
+        }
       ]
     };
   }
@@ -62,15 +61,19 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         if (plantEntity) {
           try {
             const healthData = await this.calculatePlantHealth(plantEntity, plant);
-            const plantData = {
-              moisture: await this.getPlantSensorValue(plantEntity, 'moisture', plant),
-              light: await this.getPlantSensorValue(plantEntity, 'illuminance', plant),
-              temp: await this.getPlantSensorValue(plantEntity, 'temperature', plant),
-              ec: await this.getPlantSensorValue(plantEntity, 'conductivity', plant),
+            
+            // Load all possible sensor types (not just show_bars) for health calculation
+            const allSensorTypes = ['moisture', 'illuminance', 'temperature', 'conductivity', 'humidity', 'dli'];
+            const plantData: any = {
               health: healthData.health,
               status: healthData.status,
               healthColor: healthData.color
             };
+
+            // Load sensor data for all types
+            for (const sensorType of allSensorTypes) {
+              plantData[sensorType] = await this.getPlantSensorValue(plantEntity, sensorType, plant);
+            }
             
             this.plantDataCache.set(plant.entity, plantData);
             this.requestUpdate(); // Trigger re-render with new data
@@ -346,10 +349,12 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     
     // Check for sensor data in different attribute names
     const alternativeNames: { [key: string]: string[] } = {
-      'moisture': ['soil_moisture', 'moisture_level', 'humidity', 'moisture'],
+      'moisture': ['soil_moisture', 'moisture_level', 'moisture'],
       'illuminance': ['light_intensity', 'light', 'brightness', 'illuminance'],
       'temperature': ['temp', 'temperature'],
-      'conductivity': ['electrical_conductivity', 'ec', 'conductivity', 'fertility']
+      'conductivity': ['electrical_conductivity', 'ec', 'conductivity', 'fertility'],
+      'humidity': ['humidity', 'relative_humidity', 'rh'],
+      'dli': ['dli', 'daily_light_integral', 'light_integral']
     };
     
     const alternatives = alternativeNames[sensorType] || [];
@@ -416,10 +421,12 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     
     // Check for sensor data in different attribute names
     const alternativeNames: { [key: string]: string[] } = {
-      'moisture': ['soil_moisture', 'moisture_level', 'humidity', 'moisture'],
+      'moisture': ['soil_moisture', 'moisture_level', 'moisture'],
       'illuminance': ['light_intensity', 'light', 'brightness', 'illuminance'],
       'temperature': ['temp', 'temperature'],
-      'conductivity': ['electrical_conductivity', 'ec', 'conductivity', 'fertility']
+      'conductivity': ['electrical_conductivity', 'ec', 'conductivity', 'fertility'],
+      'humidity': ['humidity', 'relative_humidity', 'rh'],
+      'dli': ['dli', 'daily_light_integral', 'light_integral']
     };
     
     const alternatives = alternativeNames[sensorType] || [];
@@ -875,56 +882,102 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     return controls;
   }
 
+  private getSensorIcon(sensorType: string): string {
+    const iconMap: { [key: string]: string } = {
+      'moisture': '💧',
+      'illuminance': '☀️',
+      'temperature': '🌡️',
+      'conductivity': '🧪',
+      'humidity': '💨',
+      'dli': '🌞'
+    };
+    return iconMap[sensorType] || '📊';
+  }
+
+  private getSensorUnit(sensorType: string): string {
+    const unitMap: { [key: string]: string } = {
+      'moisture': '%',
+      'illuminance': ' lx',
+      'temperature': '°C',
+      'conductivity': ' µS/cm',
+      'humidity': '%',
+      'dli': ' mol/m²/d'
+    };
+    return unitMap[sensorType] || '';
+  }
+
+  private async getSensorValueForType(plantEntity: any, sensorType: string, plantConfig?: any): Promise<string> {
+    // Map sensor types to internal method names
+    const typeMapping: { [key: string]: string } = {
+      'moisture': 'moisture',
+      'illuminance': 'illuminance',
+      'temperature': 'temperature',
+      'conductivity': 'conductivity',
+      'humidity': 'humidity',
+      'dli': 'dli'
+    };
+    
+    const mappedType = typeMapping[sensorType] || sensorType;
+    return await this.getPlantSensorValue(plantEntity, mappedType, plantConfig);
+  }
+
   private renderPlantsGrid() {
     const plants = this.config.plants || [];
     
     // Only render configured plants, no empty placeholders
     return plants.map(plant => {
+      if (!plant.entity) {
+        console.warn('Plant configuration missing entity:', plant);
+        return html``;
+      }
+
+      const plantEntity = this.hass.states[plant.entity];
+      if (!plantEntity) {
+        return html`
+          <div class="plant-card error">
+            <div class="plant-icon">⚠️</div>
+            <div class="plant-name">${plant.name || plant.entity}</div>
+            <div class="error-text">Entity not found: ${plant.entity}</div>
+          </div>
+        `;
+      }
+
       // Get cached data
       let plantData = {
-        moisture: '23.0',
-        temp: '16.7',
-        light: 'OK',
-        ec: 'OK',
-        health: 30,
-        status: 'Problem',
-        healthColor: '#f44336'
+        health: 50,
+        status: 'Unknown',
+        healthColor: '#666'
       };
 
-      if (plant.entity) {
-        const cachedData = this.plantDataCache.get(plant.entity);
-        if (cachedData) {
-          plantData = cachedData;
-        }
+      const cachedData = this.plantDataCache.get(plant.entity);
+      if (cachedData) {
+        plantData = cachedData;
       }
 
-      // Only show sensors that have actual data (not N/A)
-      const availableSensors = [];
+      // Use show_bars configuration (defaults to common sensors if not specified)
+      const showBars = plant.show_bars || ['moisture', 'illuminance', 'temperature', 'conductivity'];
+      const availableSensors: TemplateResult[] = [];
       
-      if (plantData.moisture && plantData.moisture !== 'N/A') {
-        availableSensors.push(html`<div class="sensor">💧 ${plantData.moisture}%</div>`);
-      }
-      
-      if (plantData.temp && plantData.temp !== 'N/A') {
-        availableSensors.push(html`<div class="sensor">🌡️ ${plantData.temp}°C</div>`);
-      }
-      
-      if (plantData.light && plantData.light !== 'N/A') {
-        availableSensors.push(html`<div class="sensor">☀️ ${plantData.light}</div>`);
-      }
-      
-      if (plantData.ec && plantData.ec !== 'N/A') {
-        availableSensors.push(html`<div class="sensor">🧪 ${plantData.ec}</div>`);
-      }
+      showBars.forEach(sensorType => {
+        const cachedSensorData = cachedData?.[sensorType];
+        if (cachedSensorData && cachedSensorData !== 'N/A') {
+          const icon = this.getSensorIcon(sensorType);
+          const unit = this.getSensorUnit(sensorType);
+          availableSensors.push(html`
+            <div class="sensor">${icon} ${cachedSensorData}${unit}</div>
+          `);
+        }
+      });
 
       const plantIcon = plant.icon || 'mdi:cannabis';
+      const plantName = plant.name || plantEntity.attributes?.friendly_name || plant.entity;
       
       return html`
         <div class="plant-card">
           <div class="plant-icon">
             ${plantIcon.startsWith('mdi:') ? html`<ha-icon icon="${plantIcon}"></ha-icon>` : plantIcon}
           </div>
-          <div class="plant-name">${plant.name}</div>
+          <div class="plant-name">${plantName}</div>
           ${availableSensors.length > 0 ? html`
             <div class="plant-sensors">
               ${availableSensors}
@@ -1223,6 +1276,18 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         border: 1px solid rgba(76, 175, 80, 0.3);
         transition: all 0.3s ease;
         min-height: 140px;
+      }
+
+      .plant-card.error {
+        border-color: #f44336;
+        background: rgba(244, 67, 54, 0.1);
+      }
+
+      .error-text {
+        font-size: 10px;
+        color: #f44336;
+        text-align: center;
+        margin-top: 8px;
       }
 
       .plant-card:hover {
