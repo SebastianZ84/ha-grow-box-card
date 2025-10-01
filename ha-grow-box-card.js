@@ -1465,6 +1465,7 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
       .flower-attribute ha-icon {
         color: var(--secondary-text-color, #888);
         --mdc-icon-size: 16px;
+        margin-right: 8px;
       }
 
       .flower-meter {
@@ -1473,6 +1474,8 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         border-radius: 2px;
         display: inline-grid;
         overflow: hidden;
+        flex: 1;
+        margin: 0 8px;
       }
 
       .flower-meter > span {
@@ -1499,6 +1502,7 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         flex-direction: column;
         align-items: flex-end;
         white-space: nowrap;
+        min-width: 35px;
       }
 
       .flower-value {
