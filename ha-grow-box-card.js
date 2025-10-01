@@ -217,19 +217,31 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         }
         return state.state === 'on' ? '100%' : '0%';
     }
-    getLightSliderWidth() {
-        var _a;
-        if (!this.config.light_entity || !this.hass) {
-            return 0;
+    getFanSpeed(entityId) {
+        var _a, _b, _c;
+        if (!this.hass)
+            return 'N/A';
+        const state = this.hass.states[entityId];
+        if (!state)
+            return 'N/A';
+        if (state.state === 'off')
+            return '0%';
+        const percentage = (_a = state.attributes) === null || _a === void 0 ? void 0 : _a.percentage;
+        if (percentage !== undefined) {
+            return `${Math.round(percentage)}%`;
         }
-        const state = this.hass.states[this.config.light_entity];
-        if (!state || state.state === 'off')
-            return 0;
-        const brightness = (_a = state.attributes) === null || _a === void 0 ? void 0 : _a.brightness;
-        if (brightness !== undefined) {
-            return (brightness / 255) * 150; // 150 is the max width
+        const speed = ((_b = state.attributes) === null || _b === void 0 ? void 0 : _b.speed) || ((_c = state.attributes) === null || _c === void 0 ? void 0 : _c.preset_mode);
+        if (speed) {
+            // Convert named speeds to percentages
+            const speedMap = {
+                'low': 33,
+                'medium': 66,
+                'high': 100,
+                'off': 0
+            };
+            return `${speedMap[speed.toLowerCase()] || 50}%`;
         }
-        return state.state === 'on' ? 150 : 0;
+        return state.state === 'on' ? '100%' : '0%';
     }
     getDeviceStatus(entityId) {
         if (!this.hass)
@@ -491,12 +503,6 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             return { health: healthScore, status: 'Problem', color: '#f44336' };
         }
     }
-    getSensorValue(entityId) {
-        var _a;
-        if (!entityId)
-            return 'N/A';
-        return ((_a = this.hass.states[entityId]) === null || _a === void 0 ? void 0 : _a.state) || 'N/A';
-    }
     handleControlClick(entityId) {
         if (!this.hass || !entityId)
             return;
@@ -543,97 +549,35 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             console.error('Error calling service:', error);
         });
     }
-    getPlantName() {
-        var _a;
-        const plants = this.config.plants || [];
-        return ((_a = plants[0]) === null || _a === void 0 ? void 0 : _a.name) || 'Plant 1';
-    }
-    getPlantMoisture() {
-        const plants = this.config.plants || [];
-        const plant = plants[0];
-        if (plant === null || plant === void 0 ? void 0 : plant.entity) {
-            const cachedData = this.plantDataCache.get(plant.entity);
-            if (cachedData) {
-                return cachedData.moisture;
+    handleSliderChange(entityId, value, type) {
+        if (!this.hass || !entityId)
+            return;
+        let service;
+        let serviceData = { entity_id: entityId };
+        if (type === 'light') {
+            if (value === 0) {
+                service = 'light.turn_off';
+            }
+            else {
+                service = 'light.turn_on';
+                serviceData.brightness_pct = value;
             }
         }
-        return '23.0';
-    }
-    getPlantTemp() {
-        const plants = this.config.plants || [];
-        const plant = plants[0];
-        if (plant === null || plant === void 0 ? void 0 : plant.entity) {
-            const cachedData = this.plantDataCache.get(plant.entity);
-            if (cachedData) {
-                return cachedData.temp;
+        else if (type === 'fan') {
+            if (value === 0) {
+                service = 'fan.turn_off';
+            }
+            else {
+                service = 'fan.set_percentage';
+                serviceData.percentage = value;
             }
         }
-        return '16.7';
-    }
-    getPlantLight() {
-        const plants = this.config.plants || [];
-        const plant = plants[0];
-        if (plant === null || plant === void 0 ? void 0 : plant.entity) {
-            const cachedData = this.plantDataCache.get(plant.entity);
-            if (cachedData) {
-                return cachedData.light;
-            }
+        else {
+            return; // Unknown type
         }
-        return 'OK';
-    }
-    getPlantEC() {
-        const plants = this.config.plants || [];
-        const plant = plants[0];
-        if (plant === null || plant === void 0 ? void 0 : plant.entity) {
-            const cachedData = this.plantDataCache.get(plant.entity);
-            if (cachedData) {
-                return cachedData.ec;
-            }
-        }
-        return 'OK';
-    }
-    renderPlant(index, x$1, y) {
-        const plants = this.config.plants || [];
-        const plant = plants[index];
-        if (!plant) {
-            return x `<!-- No plant configured for position ${index + 1} -->`;
-        }
-        // Get cached data if available
-        let plantData = {
-            moisture: '23.0',
-            light: 'OK',
-            temp: '16.7',
-            ec: 'OK',
-            health: 30,
-            status: 'Problem',
-            healthColor: '#f44336'
-        };
-        if (plant.entity) {
-            const cachedData = this.plantDataCache.get(plant.entity);
-            if (cachedData) {
-                plantData = cachedData;
-                console.log(`Rendering plant ${plant.entity} with data:`, plantData);
-            }
-        }
-        const healthBarWidth = Math.max(0, Math.min(130, (plantData.health / 100) * 130));
-        const color = '#4CAF50';
-        const icon = '🌿';
-        return x `
-      <g id="plant${index + 1}">
-        <rect x="${x$1}" y="${y}" width="150" height="130" fill="#2d2d2d" rx="8" stroke="${color}" stroke-width="1"/>
-        <text x="${x$1 + 75}" y="${y + 20}" font-family="Arial" font-size="20" text-anchor="middle">${icon}</text>
-        <text x="${x$1 + 75}" y="${y + 45}" font-family="Arial" font-size="12" fill="${color}" text-anchor="middle">${plant.name}</text>
-        <g transform="translate(${x$1 + 10}, ${y + 55})">
-          <text x="0" y="0" font-family="Arial" font-size="10" fill="#888">💧 ${plantData.moisture}%</text>
-          <text x="60" y="0" font-family="Arial" font-size="10" fill="#888">☀️ ${plantData.light}</text>
-          <text x="0" y="15" font-family="Arial" font-size="10" fill="#888">🌡️ ${plantData.temp}°C</text>
-          <text x="60" y="15" font-family="Arial" font-size="10" fill="#888">🧪 ${plantData.ec}</text>
-          <rect x="0" y="25" width="130" height="6" fill="#444" rx="3"/>
-          <rect x="0" y="25" width="${healthBarWidth}" height="6" fill="${plantData.healthColor}" rx="3"/>
-          <text x="65" y="45" font-family="Arial" font-size="9" fill="${plantData.healthColor}" text-anchor="middle">${plantData.status} - ${Math.round(plantData.health)}%</text>
-        </g>
-      </g>
-    `;
+        this.hass.callService(service.split('.')[0], service.split('.')[1], serviceData).catch(error => {
+            console.error('Error calling service:', error);
+        });
     }
     renderOptionalSensors() {
         var _a, _b, _c, _d, _e;
@@ -739,15 +683,30 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             const entity = this.hass.states[this.config.light_entity];
             const friendlyName = ((_a = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _a === void 0 ? void 0 : _a.friendly_name) || this.config.light_entity;
             const icon = this.config.light_icon || 'mdi:lightbulb';
+            const currentBrightness = this.getLightBrightness();
+            const brightnessValue = parseInt(currentBrightness.replace('%', '')) || 0;
             controls.push(x `
-        <div class="control-card light" @click="${() => this.handleControlClick(this.config.light_entity)}">
-          <div class="control-icon">
+        <div class="control-card light">
+          <div class="control-icon" @click="${() => this.handleControlClick(this.config.light_entity)}">
             ${icon.startsWith('mdi:') ? x `<ha-icon icon="${icon}"></ha-icon>` : icon}
           </div>
           <div class="control-info">
             <div class="control-label">${friendlyName}</div>
-            <div class="control-value">${this.getLightBrightness()}</div>
+            <div class="control-value">${currentBrightness}</div>
             <div class="control-status">${this.renderStatusIndicator(this.config.light_entity)}</div>
+            <div class="control-slider">
+              <input 
+                type="range" 
+                min="0" 
+                max="100" 
+                value="${brightnessValue}"
+                @input="${(e) => {
+                const target = e.target;
+                this.handleSliderChange(this.config.light_entity, parseInt(target.value), 'light');
+            }}"
+                class="brightness-slider"
+              />
+            </div>
           </div>
         </div>
       `);
@@ -756,15 +715,30 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
             const entity = this.hass.states[this.config.ventilation_entity];
             const friendlyName = ((_b = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _b === void 0 ? void 0 : _b.friendly_name) || this.config.ventilation_entity;
             const icon = this.config.ventilation_icon || 'mdi:fan';
+            const currentSpeed = this.getFanSpeed(this.config.ventilation_entity);
+            const speedValue = parseInt(currentSpeed.replace('%', '')) || 0;
             controls.push(x `
-        <div class="control-card ventilation" @click="${() => this.handleControlClick(this.config.ventilation_entity)}">
-          <div class="control-icon">
+        <div class="control-card ventilation">
+          <div class="control-icon" @click="${() => this.handleControlClick(this.config.ventilation_entity)}">
             ${icon.startsWith('mdi:') ? x `<ha-icon icon="${icon}"></ha-icon>` : icon}
           </div>
           <div class="control-info">
             <div class="control-label">${friendlyName}</div>
-            <div class="control-value">${this.getDeviceStatus(this.config.ventilation_entity)}</div>
+            <div class="control-value">${currentSpeed}</div>
             <div class="control-status">${this.renderStatusIndicator(this.config.ventilation_entity)}</div>
+            <div class="control-slider">
+              <input 
+                type="range" 
+                min="0" 
+                max="100" 
+                value="${speedValue}"
+                @input="${(e) => {
+                const target = e.target;
+                this.handleSliderChange(this.config.ventilation_entity, parseInt(target.value), 'fan');
+            }}"
+                class="speed-slider"
+              />
+            </div>
           </div>
         </div>
       `);
@@ -793,35 +767,60 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
                 const entity = this.hass.states[vent.entity];
                 const friendlyName = ((_a = entity === null || entity === void 0 ? void 0 : entity.attributes) === null || _a === void 0 ? void 0 : _a.friendly_name) || vent.name || vent.entity;
                 const icon = vent.icon || 'mdi:air-filter';
-                controls.push(x `
-          <div class="control-card vent" @click="${() => this.handleControlClick(vent.entity)}">
-            <div class="control-icon">
-            ${icon.startsWith('mdi:') ? x `<ha-icon icon="${icon}"></ha-icon>` : icon}
-          </div>
-            <div class="control-info">
-              <div class="control-label">${friendlyName}</div>
-              <div class="control-value">${this.getDeviceStatus(vent.entity)}</div>
-              <div class="control-status">${this.renderStatusIndicator(vent.entity)}</div>
+                const domain = vent.entity.split('.')[0];
+                if (domain === 'fan') {
+                    // Fan vent with speed control
+                    const currentSpeed = this.getFanSpeed(vent.entity);
+                    const speedValue = parseInt(currentSpeed.replace('%', '')) || 0;
+                    controls.push(x `
+            <div class="control-card vent">
+              <div class="control-icon" @click="${() => this.handleControlClick(vent.entity)}">
+                ${icon.startsWith('mdi:') ? x `<ha-icon icon="${icon}"></ha-icon>` : icon}
+              </div>
+              <div class="control-info">
+                <div class="control-label">${friendlyName}</div>
+                <div class="control-value">${currentSpeed}</div>
+                <div class="control-status">${this.renderStatusIndicator(vent.entity)}</div>
+                <div class="control-slider">
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    value="${speedValue}"
+                    @input="${(e) => {
+                        const target = e.target;
+                        this.handleSliderChange(vent.entity, parseInt(target.value), 'fan');
+                    }}"
+                    class="speed-slider"
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-        `);
+          `);
+                }
+                else {
+                    // Regular on/off vent
+                    controls.push(x `
+            <div class="control-card vent" @click="${() => this.handleControlClick(vent.entity)}">
+              <div class="control-icon">
+                ${icon.startsWith('mdi:') ? x `<ha-icon icon="${icon}"></ha-icon>` : icon}
+              </div>
+              <div class="control-info">
+                <div class="control-label">${friendlyName}</div>
+                <div class="control-value">${this.getDeviceStatus(vent.entity)}</div>
+                <div class="control-status">${this.renderStatusIndicator(vent.entity)}</div>
+              </div>
+            </div>
+          `);
+                }
             });
         }
         return controls;
     }
     renderPlantsGrid() {
         const plants = this.config.plants || [];
-        const positions = [0, 1, 2, 3]; // For 4 plant positions
-        return positions.map(index => {
-            const plant = plants[index];
-            if (!plant) {
-                return x `
-          <div class="plant-card empty">
-            <div class="plant-icon">🌱</div>
-            <div class="plant-name">Leer</div>
-          </div>
-        `;
-            }
+        // Only render configured plants, no empty placeholders
+        return plants.map(plant => {
             // Get cached data
             let plantData = {
                 moisture: '23.0',
@@ -829,7 +828,8 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
                 light: 'OK',
                 ec: 'OK',
                 health: 30,
-                status: 'Problem'
+                status: 'Problem',
+                healthColor: '#f44336'
             };
             if (plant.entity) {
                 const cachedData = this.plantDataCache.get(plant.entity);
@@ -865,137 +865,13 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
           ` : ''}
           <div class="plant-health">
             <div class="health-bar">
-              <div class="health-fill" style="width: ${plantData.health}%; background: #f44336;"></div>
+              <div class="health-fill" style="width: ${plantData.health}%; background: ${plantData.healthColor};"></div>
             </div>
             <div class="health-text">${plantData.status} - ${plantData.health}%</div>
           </div>
         </div>
       `;
         });
-    }
-    renderPlantGrid() {
-        var _a, _b, _c, _d, _e, _f;
-        const plants = this.config.plants || [];
-        const plantColors = ['#4CAF50', '#8BC34A', '#CDDC39', '#FFC107'];
-        const plantIcons = ['🌿', '🌱', '🌿', '🌱'];
-        const positions = [
-            { x: 40, y: 300 }, // Plant 1 (Top Left)
-            { x: 210, y: 300 }, // Plant 2 (Top Right)
-            { x: 40, y: 440 }, // Plant 3 (Bottom Left)
-            { x: 210, y: 440 } // Plant 4 (Bottom Right)
-        ];
-        // Create array of plant elements and convert to HTML
-        const plantElements = [];
-        for (let index = 0; index < positions.length; index++) {
-            const pos = positions[index];
-            const plant = plants[index];
-            const color = plantColors[index];
-            const icon = plantIcons[index];
-            const plantNum = index + 1;
-            let plantData = {
-                moisture: 'N/A',
-                light: 'N/A',
-                temp: 'N/A',
-                ec: 'N/A',
-                health: 50,
-                status: 'Leer',
-                healthColor: '#666'
-            };
-            if (plant === null || plant === void 0 ? void 0 : plant.entity) {
-                const plantEntity = this.hass.states[plant.entity];
-                if (plantEntity) {
-                    // Use cached data if available, otherwise use fallback
-                    const cachedData = this.plantDataCache.get(plant.entity);
-                    if (cachedData) {
-                        plantData = cachedData;
-                        console.log(`Using cached data for plant ${plant.entity}:`, plantData);
-                    }
-                    else {
-                        // Fallback to synchronous data extraction
-                        console.log(`Plant ${plant.entity} found (using fallback):`, plantEntity);
-                        console.log(`Plant attributes:`, plantEntity.attributes);
-                        console.log('All plant attribute keys:', Object.keys(plantEntity.attributes));
-                        console.log('Full plant attributes object:', JSON.stringify(plantEntity.attributes, null, 2));
-                        // Help find related sensor entities
-                        this.findPotentialSensorEntities(plant.entity);
-                        // Use synchronous fallback for plant data
-                        plantData = {
-                            moisture: this.getPlantSensorValueSync(plantEntity, 'moisture', plant),
-                            light: this.getPlantSensorValueSync(plantEntity, 'illuminance', plant),
-                            temp: this.getPlantSensorValueSync(plantEntity, 'temperature', plant),
-                            ec: this.getPlantSensorValueSync(plantEntity, 'conductivity', plant),
-                            health: plantEntity.state === 'ok' ? 85 : plantEntity.state === 'problem' ? 30 : 50,
-                            status: plantEntity.state === 'ok' ? 'Gesund' : plantEntity.state === 'problem' ? 'Problem' : 'Unbekannt',
-                            healthColor: plantEntity.state === 'ok' ? '#4caf50' : plantEntity.state === 'problem' ? '#f44336' : '#666'
-                        };
-                        console.log(`Plant ${plant.entity} sensor values (fallback):`, plantData);
-                    }
-                }
-                else {
-                    // Entity exists but not found in states
-                    console.log(`Plant entity ${plant.entity} not found in Home Assistant states`);
-                    plantData = {
-                        moisture: 'Entity not found',
-                        light: 'Entity not found',
-                        temp: 'Entity not found',
-                        ec: 'Entity not found',
-                        health: 0,
-                        status: 'Check console & setup guide',
-                        healthColor: '#f44336'
-                    };
-                }
-            }
-            else if (plant === null || plant === void 0 ? void 0 : plant.name) {
-                // Plant configured but no entity - check for individual sensors
-                const hasIndividualSensors = plant.moisture_sensor || plant.temperature_sensor ||
-                    plant.illuminance_sensor || plant.conductivity_sensor;
-                if (hasIndividualSensors) {
-                    // Use individual sensors without plant entity
-                    plantData = {
-                        moisture: plant.moisture_sensor ? (((_a = this.hass.states[plant.moisture_sensor]) === null || _a === void 0 ? void 0 : _a.state) || 'N/A') : 'N/A',
-                        light: plant.illuminance_sensor ? (((_b = this.hass.states[plant.illuminance_sensor]) === null || _b === void 0 ? void 0 : _b.state) || 'N/A') : 'N/A',
-                        temp: plant.temperature_sensor ? (((_c = this.hass.states[plant.temperature_sensor]) === null || _c === void 0 ? void 0 : _c.state) || 'N/A') : 'N/A',
-                        ec: plant.conductivity_sensor ? (((_d = this.hass.states[plant.conductivity_sensor]) === null || _d === void 0 ? void 0 : _d.state) || 'N/A') : 'N/A',
-                        health: 70, // Default good health for individual sensors
-                        status: 'Individual sensors',
-                        healthColor: '#4caf50'
-                    };
-                    console.log(`Using individual sensors for plant ${plant.name}:`, plantData);
-                }
-                else {
-                    // No entity and no individual sensors
-                    plantData = {
-                        moisture: 'No sensors',
-                        light: 'No sensors',
-                        temp: 'No sensors',
-                        ec: 'No sensors',
-                        health: 50,
-                        status: 'No sensors configured',
-                        healthColor: '#ff9800'
-                    };
-                }
-            }
-            const healthBarWidth = Math.max(0, Math.min(130, (plantData.health / 100) * 130));
-            const displayName = (plant === null || plant === void 0 ? void 0 : plant.name) || ((plant === null || plant === void 0 ? void 0 : plant.entity) ? (_f = (_e = this.hass.states[plant.entity]) === null || _e === void 0 ? void 0 : _e.attributes) === null || _f === void 0 ? void 0 : _f.friendly_name : null) || `Pflanze ${plantNum}`;
-            plantElements.push(x `
-        <g id="plant${plantNum}">
-          <rect x="${pos.x}" y="${pos.y}" width="150" height="130" fill="#2d2d2d" rx="8" stroke="${color}" stroke-width="1"/>
-          <text x="${pos.x + 75}" y="${pos.y + 20}" font-family="Arial" font-size="20" text-anchor="middle">${icon}</text>
-          <text x="${pos.x + 75}" y="${pos.y + 45}" font-family="Arial" font-size="12" fill="${color}" text-anchor="middle">${displayName}</text>
-          <g transform="translate(${pos.x + 10}, ${pos.y + 55})">
-            <text x="0" y="0" font-family="Arial" font-size="10" fill="#888">💧 ${plantData.moisture}${plantData.moisture !== 'N/A' ? '%' : ''}</text>
-            <text x="60" y="0" font-family="Arial" font-size="10" fill="#888">☀️ ${plantData.light}${plantData.light !== 'N/A' ? ' lx' : ''}</text>
-            <text x="0" y="15" font-family="Arial" font-size="10" fill="#888">🌡️ ${plantData.temp}${plantData.temp !== 'N/A' ? '°C' : ''}</text>
-            <text x="60" y="15" font-family="Arial" font-size="10" fill="#888">🧪 ${plantData.ec}${plantData.ec !== 'N/A' ? ' µS' : ''}</text>
-            <rect x="0" y="25" width="130" height="6" fill="#444" rx="3"/>
-            <rect x="0" y="25" width="${healthBarWidth}" height="6" fill="${plantData.healthColor}" rx="3"/>
-            <text x="65" y="45" font-family="Arial" font-size="9" fill="${plantData.healthColor}" text-anchor="middle">${plantData.status} - ${Math.round(plantData.health)}%</text>
-          </g>
-        </g>
-      `);
-        }
-        // Return all plant elements in a single template
-        return x `${plantElements}`;
     }
     render() {
         var _a;
@@ -1264,7 +1140,7 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
 
       .plants-grid {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
         gap: 12px;
         margin-top: 8px;
       }
@@ -1284,10 +1160,43 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
       }
 
-      .plant-card.empty {
-        border-style: dashed;
-        border-color: #555;
-        opacity: 0.6;
+      .control-slider {
+        margin-top: 8px;
+        width: 100%;
+      }
+
+      .brightness-slider,
+      .speed-slider {
+        width: 100%;
+        height: 4px;
+        border-radius: 2px;
+        background: #444;
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+
+      .brightness-slider::-webkit-slider-thumb,
+      .speed-slider::-webkit-slider-thumb {
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--primary-color, #4CAF50);
+        cursor: pointer;
+        border: 2px solid #fff;
+        box-shadow: 0 0 4px rgba(0,0,0,0.3);
+      }
+
+      .brightness-slider::-moz-range-thumb,
+      .speed-slider::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--primary-color, #4CAF50);
+        cursor: pointer;
+        border: 2px solid #fff;
+        box-shadow: 0 0 4px rgba(0,0,0,0.3);
       }
 
       .plant-icon {
@@ -1385,6 +1294,10 @@ let HaGrowBoxCard = class HaGrowBoxCard extends i {
         
         .plants-grid {
           grid-template-columns: 1fr;
+        }
+        
+        .control-card {
+          min-width: 140px;
         }
       }
     `;
