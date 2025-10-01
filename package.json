@@ -1,6 +1,6 @@
 {
   "name": "ha-grow-box-card",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "description": "A Home Assistant custom card for monitoring and controlling cannabis grow tents",
   "main": "ha-grow-box-card.js",
