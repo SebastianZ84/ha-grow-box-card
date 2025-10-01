@@ -1213,6 +1213,8 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
         border: 1px solid var(--divider-color, #2d2d2d);
         border-radius: 12px;
         padding: 16px;
+        width: 100%;
+        max-width: 800px;
         color: var(--primary-text-color, #ffffff);
       }
 
