@@ -10,7 +10,6 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private config!: GrowBoxCardConfig;
   @state() private plantInfoCache: Map<string, any> = new Map();
-  @state() private plantDataCache: Map<string, any> = new Map();
   @state() private sliderValues: Map<string, number> = new Map();
 
   public static async getConfigElement(): Promise<LovelaceCardEditor> {
@@ -41,7 +40,6 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     this.config = config;
     // Clear caches when config changes
     this.plantInfoCache.clear();
-    this.plantDataCache.clear();
   }
 
   protected async updated(changedProperties: Map<string | number | symbol, unknown>): Promise<void> {
@@ -52,30 +50,37 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     }
   }
 
+  private async getPlantInfo(entityId: string): Promise<any> {
+    if (this.plantInfoCache.has(entityId)) {
+      return this.plantInfoCache.get(entityId);
+    }
+
+    try {
+      const plantInfo = await this.hass.callWS({
+        type: "plant/get_info",
+        entity_id: entityId,
+      });
+      
+      console.log(`🌱 Plant info for ${entityId}:`, JSON.stringify(plantInfo, null, 2));
+      this.plantInfoCache.set(entityId, plantInfo);
+      return plantInfo;
+    } catch (err) {
+      console.error(`Failed to get plant info for ${entityId}:`, err);
+      this.plantInfoCache.set(entityId, { result: {} });
+      return { result: {} };
+    }
+  }
+
   private async preloadPlantData(): Promise<void> {
     if (!this.config?.plants || !this.hass) return;
 
     for (const plant of this.config.plants) {
-      if (plant.entity && !this.plantDataCache.has(plant.entity)) {
+      if (plant.entity && !this.plantInfoCache.has(plant.entity)) {
         const plantEntity = this.hass.states[plant.entity];
         if (plantEntity) {
           try {
-            const healthData = await this.calculatePlantHealth(plantEntity, plant);
-            
-            // Load all possible sensor types (not just show_bars) for health calculation
-            const allSensorTypes = ['moisture', 'illuminance', 'temperature', 'conductivity', 'humidity', 'dli'];
-            const plantData: any = {
-              health: healthData.health,
-              status: healthData.status,
-              healthColor: healthData.color
-            };
-
-            // Load sensor data for all types
-            for (const sensorType of allSensorTypes) {
-              plantData[sensorType] = await this.getPlantSensorValue(plantEntity, sensorType, plant);
-            }
-            
-            this.plantDataCache.set(plant.entity, plantData);
+            // Get plant info like Flower Card does
+            await this.getPlantInfo(plant.entity);
             this.requestUpdate(); // Trigger re-render with new data
           } catch (error) {
             console.error(`Error preloading data for plant ${plant.entity}:`, error);
@@ -289,27 +294,6 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     }
     
     console.log('===============================================\n');
-  }
-
-  private async getPlantInfo(entityId: string): Promise<any> {
-    if (this.plantInfoCache.has(entityId)) {
-      return this.plantInfoCache.get(entityId);
-    }
-
-    try {
-      const plantInfo = await this.hass.callWS({
-        type: "plant/get_info",
-        entity_id: entityId,
-      });
-      
-      console.log(`🌱 Plant info for ${entityId}:`, plantInfo);
-      this.plantInfoCache.set(entityId, plantInfo);
-      return plantInfo;
-    } catch (err) {
-      console.error(`Failed to get plant info for ${entityId}:`, err);
-      this.plantInfoCache.set(entityId, { result: {} });
-      return { result: {} };
-    }
   }
 
   private async getPlantSensorValue(plantEntity: any, sensorType: string, plantConfig?: any): Promise<string> {
@@ -894,26 +878,100 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     return iconMap[sensorType] || 'mdi:chart-line';
   }
 
+  private findRelatedSensor(plantEntityId: string, sensorType: string): string | null {
+    if (!this.hass) return null;
+    
+    // Extract plant name for sensor matching
+    const plantName = plantEntityId.replace('plant.', '').toLowerCase();
+    
+    // Look for related sensor entities
+    const relatedSensors = Object.keys(this.hass.states).filter(entityId => {
+      if (!entityId.startsWith('sensor.')) return false;
+      
+      const entity = this.hass.states[entityId];
+      const entityLower = entityId.toLowerCase();
+      const friendlyName = entity.attributes?.friendly_name?.toLowerCase() || '';
+      const deviceClass = entity.attributes?.device_class?.toLowerCase() || '';
+      const unitOfMeasurement = entity.attributes?.unit_of_measurement?.toLowerCase() || '';
+      
+      // Check if sensor might be related to this plant
+      const isRelatedToPlant = entityLower.includes(plantName) || 
+                              friendlyName.includes(plantName) ||
+                              entityLower.includes('purple') ||
+                              entityLower.includes('lemonade') ||
+                              entityLower.includes('cannabis');
+      
+      if (!isRelatedToPlant) return false;
+      
+      // Check if it's the right sensor type
+      const sensorTypeMatches: { [key: string]: string[] } = {
+        'moisture': ['moisture', 'humidity', 'soil'],
+        'illuminance': ['illuminance', 'light', 'lux'],
+        'temperature': ['temperature', 'temp'],
+        'conductivity': ['conductivity', 'ec', 'electrical'],
+        'humidity': ['humidity', 'rh'],
+        'dli': ['dli', 'light_integral']
+      };
+      
+      const typeKeywords = sensorTypeMatches[sensorType] || [];
+      const matchesType = typeKeywords.some(keyword => 
+        entityLower.includes(keyword) || 
+        friendlyName.includes(keyword) ||
+        deviceClass.includes(keyword)
+      );
+      
+      // Also check unit of measurement
+      const expectedUnits: { [key: string]: string[] } = {
+        'moisture': ['%'],
+        'illuminance': ['lx', 'lux'],
+        'temperature': ['°c', 'c'],
+        'conductivity': ['µs/cm', 'us/cm', 'ec'],
+        'humidity': ['%'],
+        'dli': ['mol/m²/d', 'mol']
+      };
+      
+      const expectedUnitList = expectedUnits[sensorType] || [];
+      const matchesUnit = expectedUnitList.some(unit => unitOfMeasurement.includes(unit));
+      
+      return matchesType || matchesUnit;
+    });
+    
+    if (relatedSensors.length > 0) {
+      console.log(`Found related ${sensorType} sensors:`, relatedSensors);
+      return relatedSensors[0]; // Return first match
+    }
+    
+    return null;
+  }
+
   private getPlantSensorDebug(plantEntity: any, sensorType: string): string {
     console.log(`\n=== Debugging sensor: ${sensorType} for ${plantEntity.entity_id} ===`);
     console.log('Plant attributes:', Object.keys(plantEntity.attributes));
     console.log('Full attributes:', plantEntity.attributes);
     
-    // Check sensor entity reference
+    // PRIORITY 1: Check for sensor entity references in plant attributes
     const sensorEntityId = plantEntity.attributes.sensors?.[sensorType];
     if (sensorEntityId && this.hass.states[sensorEntityId]) {
       console.log(`Found sensor entity: ${sensorEntityId} = ${this.hass.states[sensorEntityId].state}`);
       return this.hass.states[sensorEntityId].state;
     }
     
-    // Check direct attribute
+    // PRIORITY 2: Look for related sensor entities by name matching
+    const relatedSensor = this.findRelatedSensor(plantEntity.entity_id, sensorType);
+    if (relatedSensor && this.hass.states[relatedSensor]) {
+      const value = this.hass.states[relatedSensor].state;
+      console.log(`Found related sensor: ${relatedSensor} = ${value}`);
+      return value;
+    }
+    
+    // PRIORITY 3: Check direct numeric attributes
     const directValue = plantEntity.attributes[sensorType];
-    if (directValue !== undefined && directValue !== null) {
-      console.log(`Found direct attribute: ${sensorType} = ${directValue}`);
+    if (directValue !== undefined && directValue !== null && !isNaN(parseFloat(directValue))) {
+      console.log(`Found direct numeric attribute: ${sensorType} = ${directValue}`);
       return directValue.toString();
     }
     
-    // Check alternative names
+    // PRIORITY 4: Check alternative attribute names
     const alternativeNames: { [key: string]: string[] } = {
       'moisture': ['soil_moisture', 'moisture_level', 'moisture'],
       'illuminance': ['light_intensity', 'light', 'brightness', 'illuminance', 'lux'],
@@ -926,10 +984,17 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
     const alternatives = alternativeNames[sensorType] || [];
     for (const altName of alternatives) {
       const altValue = plantEntity.attributes[altName];
-      if (altValue !== undefined && altValue !== null) {
-        console.log(`Found alternative attribute: ${altName} = ${altValue}`);
+      if (altValue !== undefined && altValue !== null && !isNaN(parseFloat(altValue))) {
+        console.log(`Found alternative numeric attribute: ${altName} = ${altValue}`);
         return altValue.toString();
       }
+    }
+    
+    // PRIORITY 5: Fallback to status values (show status instead of N/A)
+    const statusValue = plantEntity.attributes[`${sensorType}_status`];
+    if (statusValue) {
+      console.log(`Found status value: ${sensorType}_status = ${statusValue}`);
+      return statusValue;
     }
     
     console.log(`No value found for ${sensorType}`);
@@ -939,67 +1004,61 @@ export class HaGrowBoxCard extends LitElement implements LovelaceCard {
   private renderFlowerCardAttribute(sensorType: string, plantEntity: any, plantConfig: any): TemplateResult {
     const icon = this.getSensorIcon(sensorType);
     
-    // Get current value with debug info
-    const rawValue = this.getPlantSensorDebug(plantEntity, sensorType);
-    const current = parseFloat(rawValue);
+    // Get plant info from cache (same approach as Flower Card)
+    const plantInfo = this.plantInfoCache.get(plantEntity.entity_id);
     
-    // Get limits with better defaults based on sensor type
-    const defaultLimits: { [key: string]: { min: number; max: number } } = {
-      'moisture': { min: 15, max: 60 },
-      'illuminance': { min: 2500, max: 100000 },
-      'temperature': { min: 15, max: 32 },
-      'conductivity': { min: 150, max: 2000 },
-      'humidity': { min: 40, max: 70 },
-      'dli': { min: 5, max: 40 }
-    };
+    if (!plantInfo?.result?.[sensorType]) {
+      console.log(`No plant info result for ${sensorType}`);
+      return html`
+        <div class="flower-attribute">
+          <ha-icon .icon="${icon}"></ha-icon>
+          <div class="flower-meter">
+            <span class="unavailable" style="width: 0%;"></span>
+          </div>
+          <div class="flower-header">
+            <span class="flower-value">N/A</span>
+            <span class="flower-unit"></span>
+          </div>
+        </div>
+      `;
+    }
     
-    const defaults = defaultLimits[sensorType] || { min: 0, max: 100 };
-    const min = plantEntity.attributes[`min_${sensorType}`] || defaults.min;
-    const max = plantEntity.attributes[`max_${sensorType}`] || defaults.max;
+    const sensorData = plantInfo.result[sensorType];
+    const { max, min, current, sensor, unit_of_measurement } = sensorData;
     
-    // Format display value
-    const displayValue = isNaN(current) ? rawValue : 
-      sensorType === 'illuminance' ? Math.round(current).toString() :
-      current % 1 === 0 ? current.toString() : current.toFixed(1);
+    console.log(`Sensor ${sensorType} data:`, sensorData);
     
-    const hasValue = !isNaN(current);
+    // Get display state from Home Assistant
+    const displayState = sensor && this.hass.states[sensor] ? 
+      this.hass.states[sensor].state : 
+      current?.toString() || 'N/A';
     
-    // Calculate percentage for bar
+    const hasValue = current !== null && current !== undefined && !isNaN(current);
+    
+    // Calculate percentage for bar (same as Flower Card)
     const percentage = hasValue ? 
       100 * Math.max(0, Math.min(1, (current - min) / (max - min))) : 0;
     
     // Determine status (good/bad/unavailable)
     const status = !hasValue ? 'unavailable' : 
       (current < min || current > max) ? 'bad' : 'good';
-    
-    // Get unit
-    const unitMap: { [key: string]: string } = {
-      'moisture': '%',
-      'illuminance': 'lx',
-      'temperature': '°C', 
-      'conductivity': 'µS/cm',
-      'humidity': '%',
-      'dli': 'mol/m²/d'
-    };
-    const unit = unitMap[sensorType] || '';
 
     return html`
-      <div class="flower-attribute" @click="${() => this.handleSensorClick(plantEntity, sensorType)}">
+      <div class="flower-attribute" @click="${() => this.handleSensorClick(plantEntity, sensorType, sensor)}">
         <ha-icon .icon="${icon}"></ha-icon>
         <div class="flower-meter">
           <span class="${status}" style="width: ${hasValue ? percentage : 0}%;"></span>
         </div>
         <div class="flower-header">
-          <span class="flower-value">${displayValue}</span>
-          <span class="flower-unit">${unit}</span>
+          <span class="flower-value">${displayState}</span>
+          <span class="flower-unit">${unit_of_measurement || ''}</span>
         </div>
       </div>
     `;
   }
 
-  private handleSensorClick(plantEntity: any, sensorType: string): void {
-    // Try to find the sensor entity to open its more-info
-    const sensorEntityId = plantEntity.attributes.sensors?.[sensorType];
+  private handleSensorClick(plantEntity: any, sensorType: string, sensorEntityId?: string): void {
+    // Use the sensor entity from plant info if available
     if (sensorEntityId && this.hass.states[sensorEntityId]) {
       this.handlePlantClick(sensorEntityId);
     } else {
